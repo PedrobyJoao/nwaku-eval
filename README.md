@@ -6,10 +6,13 @@ What is being evaluated:
 2. How the **size** of messages affects bandwidth and delay.
 3. How the **rate** of messages affects bandwidth and delay.
 
+## Executing experiments
+
+TODO with UV
+
 ## How
 
 1. Create a mesh of nodes using docker network and containers
-   1. start using one bootstrap node
 2. from where do I get the info? metrics or logs?
 
 ## Future improvements
