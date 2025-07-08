@@ -20,9 +20,6 @@ class WakuRestClient:
     REST API for subscribing to topics, publishing messages, retrieving
     messages, and getting node information. It uses a requests.Session
     for connection pooling and provides helpers for message creation.
-
-    TODOs:
-        - handle closure of session
     """
 
     def __init__(self, ip_address: str, rest_port: int, timeout: int = 10):
@@ -31,12 +28,24 @@ class WakuRestClient:
         self.timeout = timeout
         logging.info(f"WakuRestClient initialized for {self.base_url}")
 
+    def close(self):
+        """Closes the underlying requests session."""
+        self.session.close()
+        logging.debug(f"WakuRestClient session closed for {self.base_url}")
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
     def _handle_response(self, response: requests.Response) -> requests.Response:
         try:
             response.raise_for_status()
             return response
         except requests.exceptions.HTTPError as e:
-            logging.error(f"HTTP Error: {e.response.status_code} for {e.request.url}")
+            url = e.response.url
+            logging.error(f"HTTP Error: {e.response.status_code} for {url}")
             logging.error(f"Response body: {e.response.text}")
             raise WakuRestClientException(f"HTTP Error: {e}") from e
         except requests.exceptions.RequestException as e:
