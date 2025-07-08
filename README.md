@@ -31,3 +31,4 @@ TODO
 - move `black` to `uv` pyproject def
 - is `uv` and its pyproject correctly being used? (package vs library...)
 - mesh in-file TODOs
+- review project structure
