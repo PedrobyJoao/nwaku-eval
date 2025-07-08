@@ -1,5 +1,6 @@
 import base64
 import functools
+import urllib.parse
 import logging
 import time
 from typing import Any
@@ -103,7 +104,8 @@ class WakuRestClient:
         Publishes a message to a pubsub topic.
         Corresponds to POST /relay/v1/messages/{pubsubTopic}.
         """
-        url = f"{self.base_url}/relay/v1/messages/{topic}"
+        encoded_topic = urllib.parse.quote_plus(topic)
+        url = f"{self.base_url}/relay/v1/messages/{encoded_topic}"
         headers = {"content-type": "application/json"}
         response = self.session.post(
             url, headers=headers, json=message, timeout=self.timeout
@@ -116,7 +118,8 @@ class WakuRestClient:
         Retrieves messages from a pubsub topic. This is a polling endpoint.
         Corresponds to GET /relay/v1/messages/{pubsubTopic}.
         """
-        url = f"{self.base_url}/relay/v1/messages/{topic}"
+        encoded_topic = urllib.parse.quote_plus(topic)
+        url = f"{self.base_url}/relay/v1/messages/{encoded_topic}"
         headers = {"accept": "application/json"}
         response = self.session.get(url, headers=headers, timeout=self.timeout)
         return self._handle_response(response).json()
