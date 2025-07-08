@@ -1,6 +1,7 @@
 import docker
 import logging
 import requests
+import time
 
 from .utils import get_free_ports, new_docker_net, pull_docker_image
 
@@ -10,7 +11,7 @@ from docker import errors
 from docker.models.containers import Container
 from docker.models.images import Image
 from docker.models.networks import Network
-from requests.exceptions import ConnectionError
+from requests.exceptions import ConnectionError, HTTPError
 
 DOCKER_NET_NAME = "p2p-eval-test"
 
@@ -127,8 +128,7 @@ class Mesh:
         logging.info("Stopping mesh...")
         with ThreadPoolExecutor() as executor:
             # TODO: handle exceptions here?
-            all_nodes = self._bootstrap_nodes + self._nodes
-            executor.map(lambda node: node.cleanup(), all_nodes)
+            executor.map(lambda node: node.cleanup(), self.all_nodes)
 
         if self._network:
             try:
@@ -174,7 +174,8 @@ class Mesh:
         ]
         if bootstrap_multiaddresses:
             for addr in bootstrap_multiaddresses:
-                command.append(f"--staticnode={addr}")
+                if addr:
+                    command.append(f"--staticnode={addr}")
 
         container = self._client.containers.run(
             self._image,
@@ -193,21 +194,29 @@ class Mesh:
 
         return NodeContainer(container, rest_port, metrics_port)
 
-    def _get_multiaddr(self, node: NodeContainer) -> str:
-        """Retrieves the multiaddress of a node by querying its REST API."""
-        # TODO: with retries?
-        # TODO: use experiments.WakuRestClient?
-        try:
-            api_url = f"http://127.0.0.1:{node.rest_port}/info"
-            response = requests.get(api_url)
-            response.raise_for_status()
-            info = response.json()
-            multiaddr = info["listenAddresses"][
-                0
-            ]  # TODO: maybe a more reliable way of retrieving from json?
-            logging.debug(f"Got multiaddr for {node.container.name}: {multiaddr}")
-            return multiaddr
+    def _get_multiaddr(
+        self, node: NodeContainer, retries: int = 10, delay: float = 1.0
+    ) -> str:
+        """
+        Retrieves the multiaddress of a node by querying its REST API with retries.
+        This handles the race condition where the API is not yet ready.
 
-        except (ConnectionError, requests.exceptions.HTTPError) as e:
-            logging.debug(f"Error getting multiaddr for {node.container.name}: {e}")
-            return ""  # TODO: do we have to return None in Pyhton instead?
+        TODO: use waku client
+        TODO: is getting the first elem from the listenAddresses reliable enough?
+        """
+        api_url = f"http://localhost:{node.rest_port}/info"
+        for i in range(retries):
+            try:
+                response = requests.get(api_url, timeout=1)
+                response.raise_for_status()
+                info = response.json()
+                multiaddr = info["listenAddresses"][0]
+                logging.debug(f"Got multiaddr for {node.container.name}: {multiaddr}")
+                return multiaddr
+            except (ConnectionError, HTTPError, requests.exceptions.ReadTimeout) as e:
+                logging.debug(
+                    f"Attempt {i+1}/{retries}: Could not get multiaddr for {node.container.name}, retrying... Error: {e}"
+                )
+                time.sleep(delay)
+
+        raise Exception(f"Could not get multiaddr for {node.container.name}")
