@@ -14,8 +14,9 @@ from requests.exceptions import ConnectionError
 
 DOCKER_NET_NAME = "p2p-eval-test"
 
-# TODO: share config through all files
+# Logger will be inherited by Mesh consumers
 # TODO: debug level parametrizable
+# TODO: should we modularize logger? I don't think that is necessary for such a POC
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
 )

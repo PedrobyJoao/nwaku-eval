@@ -28,5 +28,6 @@ TODO
 
 ## TODOs
 
-- black should go to uv tools?
-- is toml pyproject set correctly?
+- move `black` to `uv` pyproject def
+- is `uv` and its pyproject correctly being used? (package vs library...)
+- mesh in-file TODOs
