@@ -5,8 +5,6 @@ from typing import Any
 
 import requests
 
-DEFAULT_PUBSUB_TOPIC = "/waku/2/default-waku/proto"
-
 
 class WakuRestClientException(Exception):
     """Base exception for WakuRestClient errors."""
@@ -68,26 +66,24 @@ class WakuRestClient:
         )
         return self._handle_response(response)
 
-    def publish_message(
-        self, pubsub_topic: str, waku_message: dict[str, Any]
-    ) -> requests.Response:
+    def publish_message(self, topic: str, message: dict[str, Any]) -> requests.Response:
         """
         Publishes a message to a pubsub topic.
         Corresponds to POST /relay/v1/messages/{pubsubTopic}.
         """
-        url = f"{self.base_url}/relay/v1/messages/{pubsub_topic}"
+        url = f"{self.base_url}/relay/v1/messages/{topic}"
         headers = {"content-type": "application/json"}
         response = self.session.post(
-            url, headers=headers, json=waku_message, timeout=self.timeout
+            url, headers=headers, json=message, timeout=self.timeout
         )
         return self._handle_response(response)
 
-    def get_messages(self, pubsub_topic: str) -> list[dict[str, Any]]:
+    def get_messages(self, topic: str) -> list[dict[str, Any]]:
         """
         Retrieves messages from a pubsub topic. This is a polling endpoint.
         Corresponds to GET /relay/v1/messages/{pubsubTopic}.
         """
-        url = f"{self.base_url}/relay/v1/messages/{pubsub_topic}"
+        url = f"{self.base_url}/relay/v1/messages/{topic}"
         headers = {"accept": "application/json"}
         response = self.session.get(url, headers=headers, timeout=self.timeout)
         return self._handle_response(response).json()
