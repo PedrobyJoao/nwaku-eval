@@ -55,10 +55,10 @@ class Mesh:
 
     TODOs:
     - [ ] deployment and teardown of nodes in parallel
-    - [ ] multiple bootstrap nodes
     - [ ] allow building image too
     - [ ] allow arbitrary p2p apps
         - [ ] required: receive necessary ports flags to run application
+    - [ ] handle forceful shutdown signals
     """
 
     def __init__(self, num_nodes: int, bootstrappers_num: int, image_name: str):
@@ -128,6 +128,13 @@ class Mesh:
         self.bootstrap_nodes.clear()
         self.nodes.clear()
         logging.info("Mesh stopped.")
+
+    def __enter__(self):
+        self.start()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.stop()
 
     def _start_node(
         self,

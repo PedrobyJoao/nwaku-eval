@@ -16,3 +16,12 @@ TODO with UV
 2. from where do I get the info? metrics or logs?
 
 ## Future improvements
+
+TODO
+
+## Final considerations
+
+Is it effective to evaluate performance deploying several nodes on the same machine at all?
+They'll be sharing the same network namespace, same hardware resources...
+
+TODO
