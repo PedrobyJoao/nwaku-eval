@@ -25,3 +25,8 @@ Is it effective to evaluate performance deploying several nodes on the same mach
 They'll be sharing the same network namespace, same hardware resources...
 
 TODO
+
+## TODOs
+
+- black should go to uv tools?
+- is toml pyproject set correctly?

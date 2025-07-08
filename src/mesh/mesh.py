@@ -30,10 +30,6 @@ class NodeContainer:
     metrics_port: int
 
     def cleanup(self):
-        if not self.container:
-            logging.warning("Container was not initialized.")
-            return
-
         try:
             self.container.stop()
             self.container.remove()
@@ -55,10 +51,10 @@ class Mesh:
 
     TODOs:
     - [ ] deployment and teardown of nodes in parallel
+    - [ ] handle forceful shutdown signals
     - [ ] allow building image too
     - [ ] allow arbitrary p2p apps
         - [ ] required: receive necessary ports flags to run application
-    - [ ] handle forceful shutdown signals
     """
 
     def __init__(self, num_nodes: int, bootstrappers_num: int, image_name: str):
