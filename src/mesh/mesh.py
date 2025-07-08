@@ -49,6 +49,7 @@ class Mesh:
 
     Notes:
     1. Currently it creates a docker network and runs all nodes in it.
+    2. There is no discovery yet
 
     TODOs:
     - [ ] deployment and teardown of nodes in parallel
@@ -62,14 +63,28 @@ class Mesh:
         if bootstrappers_num >= num_nodes:
             raise ValueError("Total nodes must be greater than bootstrap nodes.")
 
-        self.num_nodes = num_nodes
-        self.bootstrappers_num = bootstrappers_num
-        self.image_name = image_name
-        self.client = docker.from_env()
-        self.image: Image | None = None
-        self.network: Network | None = None
-        self.bootstrap_nodes: list[NodeContainer] = []
-        self.nodes: list[NodeContainer] = []
+        self._num_nodes = num_nodes
+        self._bootstrappers_num = bootstrappers_num
+        self._image_name = image_name
+        self._client = docker.from_env()
+        self._image: Image | None = None
+        self._network: Network | None = None
+        self._bootstrap_nodes: list[NodeContainer] = []
+        self._nodes: list[NodeContainer] = []
+
+    @property
+    def bootstrap_nodes(self) -> list[NodeContainer]:
+        """Returns the list of bootstrap nodes in the mesh."""
+        return self._bootstrap_nodes
+
+    @property
+    def regular_nodes(self) -> list[NodeContainer]:
+        """Returns the list of regular nodes in the mesh."""
+        return self._nodes
+
+    @property
+    def all_nodes(self) -> list[NodeContainer]:
+        return self._bootstrap_nodes + self._nodes
 
     def start(self):
         """
@@ -79,21 +94,21 @@ class Mesh:
         3. starts regular nodes
         """
         logging.info("Starting mesh...")
-        self.image = pull_docker_image(self.client, self.image_name)
-        self.network = new_docker_net(self.client, DOCKER_NET_NAME)
+        self._image = pull_docker_image(self._client, self._image_name)
+        self._network = new_docker_net(self._client, DOCKER_NET_NAME)
 
-        logging.info(f"Starting {self.bootstrappers_num} bootstrap nodes...")
-        for i in range(self.bootstrappers_num):
+        logging.info(f"Starting {self._bootstrappers_num} bootstrap nodes...")
+        for i in range(self._bootstrappers_num):
             # TODO: set all ports beforehand so that we can deploy nodes in parallel later
             rest_port, metrics_port = get_free_ports(2)
             node = self._start_node(f"bootstrap-node-{i}", rest_port, metrics_port)
-            self.bootstrap_nodes.append(node)
+            self._bootstrap_nodes.append(node)
 
         bootstrap_multiaddrs = [
-            self._get_multiaddr(node) for node in self.bootstrap_nodes
+            self._get_multiaddr(node) for node in self._bootstrap_nodes
         ]
 
-        num_regular_nodes = self.num_nodes - self.bootstrappers_num
+        num_regular_nodes = self._num_nodes - self._bootstrappers_num
         logging.info(f"Starting {num_regular_nodes} regular nodes...")
         for i in range(num_regular_nodes):
             rest_port, metrics_port = get_free_ports(2)
@@ -103,27 +118,27 @@ class Mesh:
                 metrics_port,
                 bootstrap_multiaddresses=bootstrap_multiaddrs,
             )
-            self.nodes.append(node)
+            self._nodes.append(node)
 
         logging.info("Mesh started successfully.")
 
     def stop(self):
         """Stops and removes all containers and the network."""
         logging.info("Stopping mesh...")
-        all_nodes = self.bootstrap_nodes + self.nodes
         with ThreadPoolExecutor() as executor:
             # TODO: handle exceptions here?
+            all_nodes = self._bootstrap_nodes + self._nodes
             executor.map(lambda node: node.cleanup(), all_nodes)
 
-        if self.network:
+        if self._network:
             try:
-                self.network.remove()
-                logging.info(f"Removed network: {self.network.name}")
+                self._network.remove()
+                logging.info(f"Removed network: {self._network.name}")
             except errors.APIError as e:
-                logging.error(f"Error removing network {self.network.name}: {e}")
+                logging.error(f"Error removing network {self._network.name}: {e}")
 
-        self.bootstrap_nodes.clear()
-        self.nodes.clear()
+        self._bootstrap_nodes.clear()
+        self._nodes.clear()
         logging.info("Mesh stopped.")
 
     def __enter__(self):
@@ -141,10 +156,10 @@ class Mesh:
         bootstrap_multiaddresses: list[str] | None = None,
     ) -> NodeContainer:
         """Starts a single node container with required ports and config."""
-        if not self.network:
+        if not self._network:
             raise ValueError("Network not initialized.")
 
-        if not self.image:
+        if not self._image:
             raise ValueError("Image not initialized.")
 
         command = [
@@ -161,8 +176,8 @@ class Mesh:
             for addr in bootstrap_multiaddresses:
                 command.append(f"--staticnode={addr}")
 
-        container = self.client.containers.run(
-            self.image,
+        container = self._client.containers.run(
+            self._image,
             command=command,
             name=name,
             detach=True,
@@ -170,16 +185,18 @@ class Mesh:
                 f"{rest_port}/tcp": rest_port,
                 f"{metrics_port}/tcp": metrics_port,
             },
-            network=self.network.name,
+            network=self._network.name,
         )
         logging.info(
             f"Started container: {name} with REST port {rest_port} and metrics port {metrics_port}"
         )
+
         return NodeContainer(container, rest_port, metrics_port)
 
     def _get_multiaddr(self, node: NodeContainer) -> str:
         """Retrieves the multiaddress of a node by querying its REST API."""
         # TODO: with retries?
+        # TODO: use experiments.WakuRestClient?
         try:
             api_url = f"http://127.0.0.1:{node.rest_port}/info"
             response = requests.get(api_url)
