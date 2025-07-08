@@ -1,4 +1,5 @@
 import base64
+import functools
 import logging
 import time
 from typing import Any
@@ -10,6 +11,29 @@ class WakuRestClientException(Exception):
     """Base exception for WakuRestClient errors."""
 
     pass
+
+
+def with_retry(attempts: int = 10, delay: float = 1.0):
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(self, *args, **kwargs):
+            last_exception = None
+            for i in range(attempts):
+                try:
+                    return func(self, *args, **kwargs)
+                except (
+                    requests.exceptions.RequestException,
+                    WakuRestClientException,
+                ):
+                    if i < attempts - 1:
+                        time.sleep(delay)
+            raise WakuRestClientException(
+                f"Request {func.__name__} failed after {attempts} attempts: {last_exception}"
+            ) from last_exception
+
+        return wrapper
+
+    return decorator
 
 
 class WakuRestClient:
@@ -48,11 +72,8 @@ class WakuRestClient:
             logging.error(f"HTTP Error: {e.response.status_code} for {url}")
             logging.error(f"Response body: {e.response.text}")
             raise WakuRestClientException(f"HTTP Error: {e}") from e
-        except requests.exceptions.RequestException as e:
-            url = e.request.url if e.request else "an unknown URL"
-            logging.error(f"Request failed for {url}: {e}")
-            raise WakuRestClientException(f"Request failed: {e}") from e
 
+    @with_retry()
     def get_info(self) -> dict[str, Any]:
         """
         Retrieves information about the running nwaku node.
@@ -63,6 +84,7 @@ class WakuRestClient:
         response = self.session.get(url, headers=headers, timeout=self.timeout)
         return self._handle_response(response).json()
 
+    @with_retry()
     def subscribe_to_pubsub_topic(self, pubsub_topics: list[str]) -> requests.Response:
         """
         Subscribes to one or more pubsub topics.
@@ -75,6 +97,7 @@ class WakuRestClient:
         )
         return self._handle_response(response)
 
+    @with_retry()
     def publish_message(self, topic: str, message: dict[str, Any]) -> requests.Response:
         """
         Publishes a message to a pubsub topic.
@@ -87,6 +110,7 @@ class WakuRestClient:
         )
         return self._handle_response(response)
 
+    @with_retry()
     def get_messages(self, topic: str) -> list[dict[str, Any]]:
         """
         Retrieves messages from a pubsub topic. This is a polling endpoint.
