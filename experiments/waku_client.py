@@ -138,7 +138,7 @@ def create_waku_message(
     message = {
         "payload": base64.b64encode(payload.encode("utf-8")).decode("utf-8"),
         "contentTopic": content_topic,
-        "timestamp": int(time.time_ns()),
+        "timestamp": time.time_ns(),
         "ephemeral": ephemeral,
     }
     if meta:
