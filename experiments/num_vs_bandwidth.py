@@ -59,6 +59,19 @@ def do_experiment(num_nodes: int, messages_per_node: int) -> pd.DataFrame:
     This function is a pure "data producer." It is responsible for
     the complete lifecycle of one experiment run but does not perform
     any analysis itself.
+
+    Experiment on the high-level:
+    1. Setup mesh
+        1. create mesh
+        2. subscribe all nodes to the same topic
+    2. Polling libp2p bytes total metrics to stabilish baseline
+    of an idle node
+        1. get the result and stop polling
+    3. start polling again
+    4. publish `n` messages from each peer `p`
+    # what else should we do AI?
+
+
     """
     logging.info(
         f"Starting experiment: {num_nodes} nodes, "
