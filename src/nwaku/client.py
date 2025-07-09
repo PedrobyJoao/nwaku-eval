@@ -9,8 +9,6 @@ import requests
 
 
 class WakuRestClientException(Exception):
-    """Base exception for WakuRestClient errors."""
-
     pass
 
 
@@ -156,3 +154,39 @@ def create_waku_message(
     if meta:
         message["meta"] = base64.b64encode(meta.encode("utf-8")).decode("utf-8")
     return message
+
+
+def scrape_metrics(metrics_raw: str, metric_name: str) -> list[dict]:
+    parsed_results = []
+    for line in metrics_raw.splitlines():
+        if line.startswith("#") or not line.strip():
+            continue
+
+        try:
+            # The value is always the last part after a space
+            name_part, value_str = line.rsplit(" ", 1)
+            value = float(value_str)
+
+            brace_pos = name_part.find("{")
+            if brace_pos == -1:  # Metric has no labels
+                if name_part == metric_name:
+                    parsed_results.append({"labels": {}, "value": value})
+            else:
+                # Metric has labels
+                # Check if the part before the brace is our metric
+                actual_name = name_part[:brace_pos]
+                if actual_name == metric_name:
+                    labels = {}
+                    # Get the string inside the braces
+                    label_str = name_part[brace_pos + 1 : -1]
+                    for pair in label_str.split(","):
+                        key, val_str = pair.split("=", 1)
+                        # Remove quotes from the value string
+                        labels[key.strip()] = val_str.strip().strip('"')
+                    parsed_results.append({"labels": labels, "value": value})
+        except ValueError:
+            # This can happen if rsplit fails or float conversion fails.
+            # We can safely ignore these lines.
+            logging.debug(f"Could not parse metric line: '{line}'")
+            continue
+    return parsed_results
