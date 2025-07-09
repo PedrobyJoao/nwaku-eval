@@ -171,6 +171,7 @@ class Mesh:
             f"--metrics-server=true",
             f"--metrics-server-address=0.0.0.0",
             f"--metrics-server-port={metrics_port}",
+            f"--peer-exchange=true", # enable dicovery through PX
         ]
         if bootstrap_multiaddresses:
             for addr in bootstrap_multiaddresses:
