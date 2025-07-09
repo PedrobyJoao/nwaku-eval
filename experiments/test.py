@@ -17,6 +17,8 @@ The analysis is presented through two primary visualizations:
     visualization directly illustrates the relationship between
     message load and the overall network cost.
 
+Used NWaku metrics for the experiment: libp2p_network_bytes_total
+
 Design Decisions:
 -----------------------
 Q: Why run independent experiments and aggregate their results
@@ -43,114 +45,34 @@ import logging
 
 import pandas as pd
 
+from mesh.mesh import Mesh
+from nwaku import client
+
 
 NUM_NODES = 5
 
 
 def do_experiment(num_nodes: int, messages_per_node: int) -> pd.DataFrame:
     """
-    Runs a single, isolated experiment and returns the raw time-series data.
+    Runs a single, isolated experiment and returns a dataframe.
 
     This function is a pure "data producer." It is responsible for
     the complete lifecycle of one experiment run but does not perform
-    any analysis itself. It returns all collected metrics as a
-    DataFrame.
-
-    Args:
-        num_nodes: The number of nodes to include in the mesh.
-        messages_per_node: The number of messages each node will publish.
-
-    Returns:
-        A pandas DataFrame containing the raw, time-stamped metrics
-        collected during the experiment.
+    any analysis itself.
     """
     logging.info(
         f"Starting experiment: {num_nodes} nodes, "
         f"{messages_per_node} messages per node."
     )
 
-    # The actual implementation of the experiment phases will go here:
-    # 1. `with Mesh(...) as mesh:` to ensure setup and teardown.
-    # 2. Polling logic to collect metrics into a list of dicts.
-    # 3. `pd.DataFrame(list_of_metrics_polls)` to create the output.
-
-    # For now, we return a placeholder DataFrame to demonstrate structure.
-    fake_data = {
-        "timestamp": range(10),
-        "total_bytes_in": [i * 100 for i in range(10)],
-        "total_bytes_out": [i * 200 for i in range(10)],
-    }
-    raw_data_df = pd.DataFrame(fake_data)
-
-    logging.info("Experiment finished. Returning raw data.")
-    return raw_data_df
-
 
 def plot_time_series(raw_data: pd.DataFrame, filename: str):
-    """
-    Generates and saves a time-series plot from raw experiment data.
-
-    Args:
-        raw_data: DataFrame from do_experiment.
-        filename: The path to save the plot image to.
-    """
     logging.info(f"Generating time-series plot: {filename}")
-    # Implementation will use matplotlib/seaborn to plot bandwidth
-    # rate (calculated from diffs in total_bytes) over time.
     pass
 
 
-def calculate_summary(
-    raw_data: pd.DataFrame, num_nodes: int, messages_per_node: int
-) -> dict:
-    """
-    Calculates the summary (aggregate) results from raw experiment data.
-
-    Args:
-        raw_data: DataFrame from do_experiment.
-        num_nodes: The number of nodes in the experiment.
-        messages_per_node: The number of messages each node published.
-
-    Returns:
-        A dictionary containing the single summary data point for this
-        entire run, ready for final aggregation.
-    """
-    logging.info("Calculating summary for the run...")
-    # Implementation will calculate baseline rate, gross bandwidth,
-    # and duration from the raw_data to find the net cost.
-
-    # Placeholder result:
-    total_messages = num_nodes * messages_per_node
-    # Fake net_bandwidth_cost for structure demonstration
-    net_bandwidth_cost = total_messages * 2048
-
-    return {
-        "total_messages": total_messages,
-        "net_bandwidth_cost": net_bandwidth_cost,
-    }
-
-
 def analyze_and_plot_aggregate(results: list[dict]):
-    """
-    Analyzes all summary results and generates the final aggregate plot.
-
-    Args:
-        results: A list of summary dictionaries, one from each run.
-    """
-    logging.info("Analyzing all experiment runs and plotting aggregate results...")
-    if not results:
-        logging.warning("No results to analyze.")
-        return
-
-    summary_df = pd.DataFrame(results)
-
-    print("\n--- Experiment Summary ---")
-    print(summary_df)
-    print("------------------------\n")
-
-    # Full implementation will use matplotlib/seaborn to create and
-    # save the final plot from summary_df.
-    logging.info("Analysis complete. Aggregate plot would be generated here.")
+    pass
 
 
 def main():
@@ -169,10 +91,6 @@ def main():
         # 2. Generate the diagnostic time-series plot for this run.
         run_name = f"{NUM_NODES}nodes_{msg_count}msgs"
         plot_time_series(raw_data_df, f"timeseries_{run_name}.png")
-
-        # 3. Calculate the summary from the raw data.
-        summary = calculate_summary(raw_data_df, NUM_NODES, msg_count)
-        all_summaries.append(summary)
 
     # 4. Analyze all collected summaries and make the final plot.
     analyze_and_plot_aggregate(all_summaries)
