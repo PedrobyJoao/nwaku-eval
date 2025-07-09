@@ -44,6 +44,9 @@ import matplotlib.pyplot as plt
 from mesh.mesh import Mesh
 from nwaku import client
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
 # Experiment config
 NUM_NODES = 5
 WAKU_IMAGE_NAME = "wakuorg/nwaku"
@@ -74,7 +77,7 @@ def do_experiment(num_nodes: int, messages_per_node: int) -> pd.DataFrame:
     the complete lifecycle of one experiment run but does not
     perform any analysis itself.
     """
-    logging.info(
+    logger.info(
         f"Starting experiment: {num_nodes} nodes, "
         f"{messages_per_node} messages per node."
         f"total messages: {num_nodes * messages_per_node}"
@@ -95,12 +98,12 @@ def do_experiment(num_nodes: int, messages_per_node: int) -> pd.DataFrame:
                     metrics_port=node.metrics_port,
                 )
 
-            logging.info("Subscribing all nodes to the pubsub topic...")
+            logger.info("Subscribing all nodes to the pubsub topic...")
             for waku_client in waku_clients.values():
                 # TODO: in parallel
                 waku_client.subscribe_to_pubsub_topic([PS_TOPIC])
 
-            logging.info("Waiting for gossipsub mesh to form...")
+            logger.info("Waiting for gossipsub mesh to form...")
             time.sleep(SUBSCRIPTIONS_WAIT_S)
 
             # Start background metrics polling
@@ -111,11 +114,11 @@ def do_experiment(num_nodes: int, messages_per_node: int) -> pd.DataFrame:
             polling_thread.start()
 
             # Establish baseline traffic
-            logging.info(f"Collecting baseline metrics for {BASELINE_WAIT_S}s...")
+            logger.info(f"Collecting baseline metrics for {BASELINE_WAIT_S}s...")
             time.sleep(BASELINE_WAIT_S)
 
             # Publish messages from all nodes
-            logging.info(
+            logger.info(
                 f"Publishing {messages_per_node} messages from each of the {num_nodes} nodes..."
             )
             for node_id, waku_client in waku_clients.items():
@@ -126,22 +129,20 @@ def do_experiment(num_nodes: int, messages_per_node: int) -> pd.DataFrame:
                         content_topic=CONTENT_TOPIC,
                     )
                     waku_client.publish_message(PS_TOPIC, msg)
-            logging.info("All messages published.")
+            logger.info("All messages published.")
 
             # Collect data post-publishing
-            logging.info(f"Waiting {POST_PUBLISH_WAIT_S}s for messages to propagate...")
+            logger.info(f"Waiting {POST_PUBLISH_WAIT_S}s for messages to propagate...")
             time.sleep(POST_PUBLISH_WAIT_S)
 
         except Exception as e:
-            logging.error(
-                f"An error occurred during the experiment: {e}", exc_info=True
-            )
+            logger.error(f"An error occurred during the experiment: {e}", exc_info=True)
             raise  # Re-raise the exception to terminate the failed run.
 
         finally:
             # Ensure polling stops and clients are closed
             if polling_thread and polling_thread.is_alive():
-                logging.info("Stopping metrics polling...")
+                logger.info("Stopping metrics polling...")
                 if stop_event:
                     stop_event.set()
                 polling_thread.join()
@@ -149,10 +150,10 @@ def do_experiment(num_nodes: int, messages_per_node: int) -> pd.DataFrame:
             for waku_client in waku_clients.values():
                 waku_client.close()
 
-    logging.info(f"Experiment finished. Collected {len(records)} data points.")
+    logger.info(f"Experiment finished. Collected {len(records)} data points.")
 
     if not records:
-        logging.warning("No data was collected during the experiment.")
+        logger.warning("No data was collected during the experiment.")
         return pd.DataFrame()
 
     return pd.DataFrame(records)
@@ -182,18 +183,15 @@ def _poll_metrics(
                         }
                     )
             except Exception as e:
-                logging.error(f"Error polling metrics for {node_id}: {e}")
+                logger.error(f"Error polling metrics for {node_id}: {e}")
 
         if stop_event.wait(POLL_INTERVAL_S):
             break
 
 
 def plot_time_series(raw_data: pd.DataFrame, filename: str):
-    logging.info(f"Generating time-series plot: {filename}")
-
-    if raw_data.empty:
-        logging.warning("Cannot generate plot from empty dataframe.")
-        return
+    # TODO
+    pass
 
 
 def analyze_and_plot_aggregate(results: list[dict]):
@@ -202,7 +200,7 @@ def analyze_and_plot_aggregate(results: list[dict]):
 
 def main():
     # TODO: accept cmd args for num of nodes
-    logging.info("Starting bandwidth measurement session.")
+    logger.info("Starting bandwidth measurement session.")
 
     messages_per_node_configs = [2]
     all_summaries = []
@@ -212,7 +210,7 @@ def main():
         raw_data_df = do_experiment(num_nodes=NUM_NODES, messages_per_node=msg_count)
 
         if raw_data_df.empty:
-            logging.warning(f"Skipping plot for {msg_count} msgs/node due to no data.")
+            logger.warning(f"Skipping plot for {msg_count} msgs/node due to no data.")
             continue
 
         total_msg_count = msg_count * NUM_NODES
@@ -230,12 +228,11 @@ def main():
     # 4. Analyze all collected summaries and make the final plot.
     analyze_and_plot_aggregate(all_summaries)
 
-    logging.info("Bandwidth measurement session finished.")
+    logger.info("Bandwidth measurement session finished.")
 
 
 if __name__ == "__main__":
-    # TODO: setting the logging here is also affecting dependencies loggers
     logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-    )
+            format="%(asctime)s - %(levelname)s - %(message)s",
+            )
     main()

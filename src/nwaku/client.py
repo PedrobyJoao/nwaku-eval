@@ -7,6 +7,9 @@ from typing import Any
 
 import requests
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
 
 class WakuRestClientException(Exception):
     pass
@@ -52,14 +55,14 @@ class WakuRestClient:
         self.metrics_url = f"http://{ip_address}:{metrics_port}/metrics"
         self.session = requests.Session()
         self.timeout = timeout
-        logging.info(
+        logger.info(
             f"WakuRestClient initialized for REST API at {self.base_url} "
             f"and metrics at {self.metrics_url}"
         )
 
     def close(self):
         self.session.close()
-        logging.debug(f"WakuRestClient session closed for {self.base_url}")
+        logger.debug(f"WakuRestClient session closed for {self.base_url}")
 
     def __enter__(self):
         return self
@@ -73,8 +76,8 @@ class WakuRestClient:
             return response
         except requests.exceptions.HTTPError as e:
             url = e.response.url
-            logging.error(f"HTTP Error: {e.response.status_code} for {url}")
-            logging.error(f"Response body: {e.response.text}")
+            logger.error(f"HTTP Error: {e.response.status_code} for {url}")
+            logger.error(f"Response body: {e.response.text}")
             raise WakuRestClientException(f"HTTP Error: {e}") from e
 
     @with_retry()
@@ -187,6 +190,6 @@ def scrape_metrics(metrics_raw: str, metric_name: str) -> list[dict]:
         except ValueError:
             # This can happen if rsplit fails or float conversion fails.
             # We can safely ignore these lines.
-            logging.debug(f"Could not parse metric line: '{line}'")
+            logger.debug(f"Could not parse metric line: '{line}'")
             continue
     return parsed_results

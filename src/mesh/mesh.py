@@ -15,12 +15,8 @@ from requests.exceptions import ConnectionError, HTTPError
 
 DOCKER_NET_NAME = "p2p-eval-test"
 
-# Logger will be inherited by Mesh consumers
-# TODO: debug level parametrizable
-# TODO: should we modularize logger? I don't think that is necessary for such a POC
-logging.basicConfig(
-    level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 @dataclass
@@ -36,13 +32,13 @@ class NodeContainer:
         try:
             self.container.stop()
             self.container.remove()
-            logging.info(f"Stopped and removed container: {self.container.name}")
+            logger.info(f"Stopped and removed container: {self.container.name}")
         except errors.NotFound:
-            logging.warning(
+            logger.warning(
                 f"Container {self.container.name} not found for cleanup, already removed."
             )
         except Exception as e:
-            logging.error(f"Error cleaning up container {self.container.name}: {e}")
+            logger.error(f"Error cleaning up container {self.container.name}: {e}")
 
 
 class Mesh:
@@ -95,11 +91,11 @@ class Mesh:
         2. starts bootstrap nodes and retrieve their listening addresses
         3. starts regular nodes
         """
-        logging.info("Starting mesh...")
+        logger.info("Starting mesh...")
         self._image = pull_docker_image(self._client, self._image_name)
         self._network = new_docker_net(self._client, DOCKER_NET_NAME)
 
-        logging.info(f"Starting {self._bootstrappers_num} bootstrap nodes...")
+        logger.info(f"Starting {self._bootstrappers_num} bootstrap nodes...")
         for i in range(self._bootstrappers_num):
             # TODO: set all ports beforehand so that we can deploy nodes in parallel later
             rest_port, metrics_port = get_free_ports(2)
@@ -111,7 +107,7 @@ class Mesh:
         ]
 
         num_regular_nodes = self._num_nodes - self._bootstrappers_num
-        logging.info(f"Starting {num_regular_nodes} regular nodes...")
+        logger.info(f"Starting {num_regular_nodes} regular nodes...")
         for i in range(num_regular_nodes):
             rest_port, metrics_port = get_free_ports(2)
             node = self._start_node(
@@ -122,11 +118,11 @@ class Mesh:
             )
             self._nodes.append(node)
 
-        logging.info("Mesh started successfully.")
+        logger.info("Mesh started successfully.")
 
     def stop(self):
         """Stops and removes all containers and the network."""
-        logging.info("Stopping mesh...")
+        logger.info("Stopping mesh...")
         with ThreadPoolExecutor() as executor:
             # TODO: handle exceptions here?
             executor.map(lambda node: node.cleanup(), self.all_nodes)
@@ -134,13 +130,13 @@ class Mesh:
         if self._network:
             try:
                 self._network.remove()
-                logging.info(f"Removed network: {self._network.name}")
+                logger.info(f"Removed network: {self._network.name}")
             except errors.APIError as e:
-                logging.error(f"Error removing network {self._network.name}: {e}")
+                logger.error(f"Error removing network {self._network.name}: {e}")
 
         self._bootstrap_nodes.clear()
         self._nodes.clear()
-        logging.info("Mesh stopped.")
+        logger.info("Mesh stopped.")
 
     def __enter__(self):
         self.start()
@@ -189,7 +185,7 @@ class Mesh:
             },
             network=self._network.name,
         )
-        logging.info(
+        logger.info(
             f"Started container: {name} with REST port {rest_port} and metrics port {metrics_port}"
         )
 
@@ -212,10 +208,10 @@ class Mesh:
                 response.raise_for_status()
                 info = response.json()
                 multiaddr = info["listenAddresses"][0]
-                logging.debug(f"Got multiaddr for {node.container.name}: {multiaddr}")
+                logger.debug(f"Got multiaddr for {node.container.name}: {multiaddr}")
                 return multiaddr
             except (ConnectionError, HTTPError, requests.exceptions.ReadTimeout) as e:
-                logging.debug(
+                logger.debug(
                     f"Attempt {i+1}/{retries}: Could not get multiaddr for {node.container.name}, retrying... Error: {e}"
                 )
                 time.sleep(delay)
