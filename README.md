@@ -28,9 +28,9 @@ TODO
 
 ## TODOs
 
-- [ ] Modularize experiments and add readmes for them
-- [ ] Either another discovery mechanism OR fix PR OR statically connect peers
+- [ ] Either another discovery mechanism OR fix PX OR statically connect peers
 - [ ] Nodes deployment in parallel
+- [ ] Modularize experiments and add readmes for them
 - [ ] move `black` to `uv` pyproject def
 - [ ] is `uv` and its pyproject correctly being used? (package vs library...)
 - [ ] mesh in-file TODOs
