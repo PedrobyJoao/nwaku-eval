@@ -27,6 +27,7 @@ logging.basicConfig(
 class NodeContainer:
     """Holds state for a running node container."""
 
+    id: str
     container: Container
     rest_port: int
     metrics_port: int
@@ -192,7 +193,7 @@ class Mesh:
             f"Started container: {name} with REST port {rest_port} and metrics port {metrics_port}"
         )
 
-        return NodeContainer(container, rest_port, metrics_port)
+        return NodeContainer(name, container, rest_port, metrics_port)
 
     def _get_multiaddr(
         self, node: NodeContainer, retries: int = 10, delay: float = 1.0
