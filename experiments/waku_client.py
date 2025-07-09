@@ -25,7 +25,8 @@ def with_retry(attempts: int = 10, delay: float = 1.0):
                 except (
                     requests.exceptions.RequestException,
                     WakuRestClientException,
-                ):
+                ) as e:
+                    last_exception = e
                     if i < attempts - 1:
                         time.sleep(delay)
             raise WakuRestClientException(
@@ -39,22 +40,26 @@ def with_retry(attempts: int = 10, delay: float = 1.0):
 
 class WakuRestClient:
     """
-    A simple HTTP client for the NWaku REST API.
-
-    This client provides methods to interact with a nwaku node's
-    REST API for subscribing to topics, publishing messages, retrieving
-    messages, and getting node information. It uses a requests.Session
-    for connection pooling and provides helpers for message creation.
+    A HTTP client for a NWaku node's REST API and metrics endpoint.
     """
 
-    def __init__(self, ip_address: str, rest_port: int, timeout: int = 10):
+    def __init__(
+        self,
+        ip_address: str,
+        rest_port: int,
+        metrics_port: int,
+        timeout: int = 10,
+    ):
         self.base_url = f"http://{ip_address}:{rest_port}"
+        self.metrics_url = f"http://{ip_address}:{metrics_port}/metrics"
         self.session = requests.Session()
         self.timeout = timeout
-        logging.info(f"WakuRestClient initialized for {self.base_url}")
+        logging.info(
+            f"WakuRestClient initialized for REST API at {self.base_url} "
+            f"and metrics at {self.metrics_url}"
+        )
 
     def close(self):
-        """Closes the underlying requests session."""
         self.session.close()
         logging.debug(f"WakuRestClient session closed for {self.base_url}")
 
@@ -77,8 +82,7 @@ class WakuRestClient:
     @with_retry()
     def get_info(self) -> dict[str, Any]:
         """
-        Retrieves information about the running nwaku node.
-        Corresponds to GET /info.
+        GET /info.
         """
         url = f"{self.base_url}/info"
         headers = {"accept": "application/json"}
@@ -88,8 +92,7 @@ class WakuRestClient:
     @with_retry()
     def subscribe_to_pubsub_topic(self, pubsub_topics: list[str]) -> requests.Response:
         """
-        Subscribes to one or more pubsub topics.
-        Corresponds to POST /relay/v1/subscriptions.
+        POST /relay/v1/subscriptions.
         """
         url = f"{self.base_url}/relay/v1/subscriptions"
         headers = {"accept": "text/plain", "content-type": "application/json"}
@@ -101,8 +104,7 @@ class WakuRestClient:
     @with_retry()
     def publish_message(self, topic: str, message: dict[str, Any]) -> requests.Response:
         """
-        Publishes a message to a pubsub topic.
-        Corresponds to POST /relay/v1/messages/{pubsubTopic}.
+        POST /relay/v1/messages/{pubsubTopic}.
         """
         encoded_topic = urllib.parse.quote_plus(topic)
         url = f"{self.base_url}/relay/v1/messages/{encoded_topic}"
@@ -115,14 +117,24 @@ class WakuRestClient:
     @with_retry()
     def get_messages(self, topic: str) -> list[dict[str, Any]]:
         """
-        Retrieves messages from a pubsub topic. This is a polling endpoint.
-        Corresponds to GET /relay/v1/messages/{pubsubTopic}.
+        GET /relay/v1/messages/{pubsubTopic}.
         """
         encoded_topic = urllib.parse.quote_plus(topic)
         url = f"{self.base_url}/relay/v1/messages/{encoded_topic}"
         headers = {"accept": "application/json"}
         response = self.session.get(url, headers=headers, timeout=self.timeout)
         return self._handle_response(response).json()
+
+    @with_retry(attempts=3, delay=0.5)
+    def get_metrics(self) -> str:
+        """
+        GET /metrics
+        """
+        headers = {"accept": "text/plain"}
+        response = self.session.get(
+            self.metrics_url, headers=headers, timeout=self.timeout
+        )
+        return self._handle_response(response).text
 
 
 def create_waku_message(
