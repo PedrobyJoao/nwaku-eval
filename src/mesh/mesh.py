@@ -1,7 +1,5 @@
 import docker
 import logging
-import requests
-import time
 
 from .utils import get_free_ports, new_docker_net, pull_docker_image
 from nwaku.client import WakuClient
@@ -12,7 +10,6 @@ from docker import errors
 from docker.models.containers import Container
 from docker.models.images import Image
 from docker.models.networks import Network
-from requests.exceptions import ConnectionError, HTTPError
 
 DOCKER_NET_NAME = "p2p-eval-test"
 

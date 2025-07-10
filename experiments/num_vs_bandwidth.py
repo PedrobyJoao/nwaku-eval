@@ -32,6 +32,7 @@ A: By setting up a fresh, clean network for each set of parameters
    on bandwidth.
 """
 
+from dataclasses import dataclass
 import logging
 import threading
 import time
@@ -72,7 +73,13 @@ WAIT_AFTER_SUBSCRIPTIONS_S = 10
 WAIT_CAN_SUBSCRIBE_S = 10
 
 
-def do_experiment(num_nodes: int, messages_per_node: int) -> pd.DataFrame:
+@dataclass
+class ExperimentInfo:
+    num_messages: int
+    df: pd.DataFrame
+
+
+def do_experiment(num_nodes: int, messages_per_node: int) -> ExperimentInfo | None:
     """
     Runs a single, isolated experiment and returns a dataframe.
 
@@ -80,10 +87,11 @@ def do_experiment(num_nodes: int, messages_per_node: int) -> pd.DataFrame:
     the complete lifecycle of one experiment run but does not
     perform any analysis itself.
     """
+    total_msgs = num_nodes * messages_per_node
     logger.info(
         f"Starting experiment: {num_nodes} nodes, "
         f"{messages_per_node} messages per node."
-        f"total messages: {num_nodes * messages_per_node}"
+        f"total messages: {total_msgs}"
     )
     records: List[Dict[str, Any]] = []
 
@@ -180,9 +188,9 @@ def do_experiment(num_nodes: int, messages_per_node: int) -> pd.DataFrame:
 
     if not records:
         logger.warning("No data was collected during the experiment.")
-        return pd.DataFrame()
+        return
 
-    return pd.DataFrame(records)
+    return ExperimentInfo(total_msgs, pd.DataFrame(records))
 
 
 def poll_libp2p_bytes_metrics(
@@ -235,12 +243,12 @@ def poll_libp2p_bytes_metrics(
             break
 
 
-def plot_time_series(raw_data: pd.DataFrame, filename: str):
+def plot_time_series(experiments: list[ExperimentInfo], filename: str):
     # TODO
     pass
 
 
-def analyze_and_plot_aggregate(results: list[dict]):
+def analyze_and_plot_aggregate(experiments: list[ExperimentInfo], filename: str):
     pass
 
 
@@ -253,27 +261,21 @@ def main():
 
     for msg_count in messages_per_node_configs:
         # 1. Run one isolated experiment to get the raw data.
-        raw_data_df = do_experiment(num_nodes=NUM_NODES, messages_per_node=msg_count)
+        experiment = do_experiment(num_nodes=NUM_NODES, messages_per_node=msg_count)
 
-        if raw_data_df.empty:
+        if experiment is None or experiment.df.empty:
             logger.warning(f"Skipping plot for {msg_count} msgs/node due to no data.")
             continue
 
-        total_msg_count = msg_count * NUM_NODES
-        # 2. Generate the diagnostic time-series plot for this run.
-        run_name = f"{NUM_NODES}nodes_{total_msg_count}msgs"
-        plot_time_series(raw_data_df, f"testdata/timeseries_{run_name}.png")
+        all_summaries.append(experiment)
 
-        all_summaries.append(
-            # TODO: use dataclass instead
-            {
-                "msg_count": total_msg_count,
-                "raw_data": raw_data_df,
-            }
-        )
+    # 2. time-series for all experiments
+    time_series_fs = "num_vs_bandwidth_timeseries.png"
+    plot_time_series(all_summaries, time_series_fs)
 
-    # 4. Analyze all collected summaries and make the final plot.
-    analyze_and_plot_aggregate(all_summaries)
+    # 3. aggregated analysis comparing effect of different number of msgs
+    aggregated_fs = "num_vs_bandwidth.png"
+    analyze_and_plot_aggregate(all_summaries, aggregated_fs)
 
     logger.info("Bandwidth measurement session finished.")
 
