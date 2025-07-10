@@ -41,7 +41,7 @@ def with_retry(attempts: int = 10, delay: float = 1.0):
 
 class WakuRestClient:
     """
-    A HTTP client for a NWaku node's REST API and metrics endpoint.
+    A HTTP client for a NWaku node's REST API and metrics API.
     """
 
     def __init__(
@@ -62,7 +62,6 @@ class WakuRestClient:
 
     def close(self):
         self.session.close()
-        logger.debug(f"WakuRestClient session closed for {self.base_url}")
 
     def __enter__(self):
         return self

@@ -43,13 +43,13 @@ class NodeContainer:
 
 class Mesh:
     """
-    Mesh handles the setup and teardown of a mesh network of nodes.
+    Mesh handles the setup and teardown of a network of nodes.
 
-    Notes:
     1. Currently it creates a docker network and runs all nodes in it.
     2. There is no discovery yet
 
     TODOs:
+    - [ ] statically build mesh or add discovery
     - [ ] deployment and teardown of nodes in parallel
     - [ ] handle forceful shutdown signals
     - [ ] allow building image too
@@ -72,12 +72,11 @@ class Mesh:
 
     @property
     def bootstrap_nodes(self) -> list[NodeContainer]:
-        """Returns the list of bootstrap nodes in the mesh."""
         return self._bootstrap_nodes
 
     @property
     def regular_nodes(self) -> list[NodeContainer]:
-        """Returns the list of regular nodes in the mesh."""
+        """Returns the list of non-bootstrap nodes in the mesh."""
         return self._nodes
 
     @property
@@ -91,7 +90,7 @@ class Mesh:
         2. starts bootstrap nodes and retrieve their listening addresses
         3. starts regular nodes
         """
-        logger.info("Starting mesh...")
+        logger.info("Starting mesh: pulling image and creating docker network")
         self._image = pull_docker_image(self._client, self._image_name)
         self._network = new_docker_net(self._client, DOCKER_NET_NAME)
 
@@ -102,6 +101,7 @@ class Mesh:
             node = self._start_node(f"bootstrap-node-{i}", rest_port, metrics_port)
             self._bootstrap_nodes.append(node)
 
+        logger.info("Getting multiaddresses of bootstrap nodes")
         bootstrap_multiaddrs = [
             self._get_multiaddr(node) for node in self._bootstrap_nodes
         ]
@@ -179,6 +179,7 @@ class Mesh:
             command=command,
             name=name,
             detach=True,
+            # make node's APIs accessible to host, and therefore to this script'
             ports={
                 f"{rest_port}/tcp": rest_port,
                 f"{metrics_port}/tcp": metrics_port,
@@ -198,7 +199,7 @@ class Mesh:
         Retrieves the multiaddress of a node by querying its REST API with retries.
         This handles the race condition where the API is not yet ready.
 
-        TODO: use waku client
+        TODO: use waku client under src/nwaku/client.py
         TODO: is getting the first elem from the listenAddresses reliable enough?
         """
         api_url = f"http://localhost:{node.rest_port}/info"
