@@ -40,41 +40,22 @@ A: By setting up a fresh, clean network for each set of parameters
 
 from dataclasses import dataclass
 import logging
-import threading
-import time
-from typing import Any, Dict, List
+from typing import Dict
 
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from concurrent.futures import ThreadPoolExecutor
 
-from mesh.mesh import Mesh
-from helpers import poll_libp2p_bytes_metrics
 from nwaku import client
+from common import run_experiment_lifecycle, PUBSUB_TOPIC
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 # Experiment config
 NUM_NODES = 20
-WAKU_IMAGE_NAME = "wakuorg/nwaku"
-PS_TOPIC = "/waku/2/default-waku/proto"
-CONTENT_TOPIC = "my-content-topic"
-
-# Time to wait for the network to stabilize and collect baseline
-# metrics before publishing.
-BASELINE_WAIT_S = 15
-
-# Time to wait after publishing for messages to propagate and be
-# reflected in metrics.
-POST_PUBLISH_WAIT_S = 10
-
-# Time to wait for the pubsub mesh to form after all nodes have
-# subscribed.
-WAIT_AFTER_SUBSCRIPTIONS_S = 10
-
-WAIT_CAN_SUBSCRIBE_S = 10
+CONTENT_TOPIC = "num-vs-bw-content-topic"
 
 
 @dataclass
@@ -83,123 +64,36 @@ class ExperimentInfo:
     df: pd.DataFrame
 
 
-def do_experiment(num_nodes: int, messages_per_node: int) -> ExperimentInfo | None:
+def publish_by_number(
+    waku_clients: Dict[str, client.WakuClient], messages_per_node: int
+):
     """
-    Runs a single, isolated experiment and returns a dataframe.
+    The specific publishing scenario for this experiment.
 
-    This function is a pure "data producer." It is responsible for
-    the complete lifecycle of one experiment run but does not
-    perform any analysis itself.
+    This function instructs every node in the network to publish a
+    specified number of messages concurrently.
     """
-    total_msgs = num_nodes * messages_per_node
     logger.info(
-        f"Starting experiment: {num_nodes} nodes, "
-        f"{messages_per_node} messages per node."
-        f"total messages: {total_msgs}"
+        f"Publishing {messages_per_node} messages from each of the {len(waku_clients)} nodes..."
     )
-    records: List[Dict[str, Any]] = []
 
-    with Mesh(
-        num_nodes=num_nodes, bootstrappers_num=1, image_name=WAKU_IMAGE_NAME
-    ) as mesh:
-        waku_clients: Dict[str, client.WakuClient] = {}
-        polling_thread: threading.Thread | None = None
-        stop_event: threading.Event | None = None
-        try:
-            for node in mesh.all_nodes:
-                waku_clients[node.id] = client.WakuClient(
-                    ip_address="localhost",
-                    rest_port=node.rest_port,
-                    metrics_port=node.metrics_port,
-                )
-
-            logger.info("Waiting for REST API to be ready for subscriptions...")
-            time.sleep(WAIT_CAN_SUBSCRIBE_S)
-            logger.info("Subscribing all nodes to the pubsub topic...")
-            with ThreadPoolExecutor() as executor:
-                # list to wait for evaluation of all threads
-                list(
-                    executor.map(
-                        lambda w_client: w_client.subscribe_to_pubsub_topic([PS_TOPIC]),
-                        waku_clients.values(),
-                    )
-                )
-
-            logger.info("Waiting for gossipsub mesh to form...")
-            time.sleep(WAIT_AFTER_SUBSCRIPTIONS_S)
-
-            # Start background metrics polling
-            stop_event = threading.Event()
-            polling_thread = threading.Thread(
-                target=poll_libp2p_bytes_metrics,
-                args=(stop_event, waku_clients, records),
+    publish_tasks = []
+    for node_id, waku_client in waku_clients.items():
+        for i in range(messages_per_node):
+            msg = client.create_waku_message(
+                payload=f"msg-{i}-{node_id}", content_topic=CONTENT_TOPIC
             )
-            polling_thread.start()
+            publish_tasks.append((waku_client, msg))
 
-            # Establish baseline traffic
-            logger.info(f"Collecting baseline metrics for {BASELINE_WAIT_S}s...")
-            time.sleep(BASELINE_WAIT_S)
-
-            # Publish messages from all nodes
-            logger.info(
-                f"Publishing {messages_per_node} messages from each of the {num_nodes} nodes..."
+    with ThreadPoolExecutor() as executor:
+        list(
+            executor.map(
+                lambda task: task[0].publish_message(PUBSUB_TOPIC, task[1]),
+                publish_tasks,
             )
+        )
 
-            # PUBLISH.1: Prepare all publishing tasks in advance.
-            publish_tasks = []
-            for node_id, waku_client in waku_clients.items():
-                for i in range(messages_per_node):
-                    msg = client.create_waku_message(
-                        payload=f"msg-{i}-{node_id}",
-                        content_topic=CONTENT_TOPIC,
-                    )
-                    publish_tasks.append((waku_client, msg))
-
-            # PUBLISH.2. Use a thread pool to publish all messages concurrently.
-            with ThreadPoolExecutor() as executor:
-                # list() ensures we wait for all messages to be sent.
-                list(
-                    executor.map(
-                        lambda task: task[0].publish_message(PS_TOPIC, task[1]),
-                        publish_tasks,
-                    )
-                )
-
-            logger.info("All messages published.")
-
-            # Collect data post-publishing
-            logger.info(
-                f"Waiting {POST_PUBLISH_WAIT_S}s for all messages to propagate..."
-            )
-            time.sleep(POST_PUBLISH_WAIT_S)
-
-        except Exception as e:
-            logger.error(f"An error occurred during the experiment: {e}", exc_info=True)
-            raise  # Re-raise the exception to terminate the failed run.
-
-        finally:
-            # Ensure polling stops and clients are closed
-            if polling_thread and polling_thread.is_alive():
-                logger.info("Stopping metrics polling...")
-                if stop_event:
-                    stop_event.set()
-                polling_thread.join()
-
-            for waku_client in waku_clients.values():
-                waku_client.close()
-
-    logger.info(f"Experiment finished. Collected {len(records)} data points.")
-
-    if not records:
-        logger.warning("No data was collected during the experiment.")
-        return
-
-    return ExperimentInfo(total_msgs, pd.DataFrame(records))
-
-
-def plot_time_series(experiments: list[ExperimentInfo], filename: str):
-    # TODO
-    pass
+    logger.info("All messages published.")
 
 
 def analyze_and_plot_aggregate(
@@ -217,7 +111,6 @@ def analyze_and_plot_aggregate(
     """
     logger.info(f"Analyzing and plotting aggregate results to {filename}...")
     plot_data = []
-
     for experiment in experiments:
         df = experiment.df
 
@@ -226,7 +119,6 @@ def analyze_and_plot_aggregate(
         # `libp2p_network_bytes_total` is a cumulative counter
         agg_df = df.groupby("node")["total_bytes"].agg(["max", "min"])
         net_bandwidth_cost = (agg_df["max"] - agg_df["min"]).sum()
-
         plot_data.append(
             {
                 "total_messages": experiment.num_messages,
@@ -239,63 +131,58 @@ def analyze_and_plot_aggregate(
         return
 
     summary_df = pd.DataFrame(plot_data)
-
-    # Create the plot
     plt.figure(figsize=(12, 8))
     sns.set_theme(style="whitegrid")
-
-    # Using regplot to show the linear relationship and confidence interval
     plot = sns.regplot(
         x="total_messages",
         y="net_bandwidth_cost_mb",
         data=summary_df,
-        ci=95,  # Show 95% confidence interval
+        ci=95,
     )
-
     plot.set_title(
-        f"Total Messages Sent vs. Net Bandwidth Cost ({num_nodes} nodes)",
-        fontsize=16,
-        fontweight="bold",
+        f"Total Messages Sent vs. Net Bandwidth Cost ({num_nodes} nodes)", fontsize=16
     )
     plot.set_xlabel("Total Number of Messages Sent (across all nodes)", fontsize=12)
     plot.set_ylabel("Net Bandwidth Cost (MB)", fontsize=12)
-
-    # Save the plot
     plt.savefig(filename)
     plt.close()
     logger.info(f"Aggregate plot saved to {filename}")
 
 
-def main():
-    # TODO: accept cmd args for num of nodes
-    logger.info("Starting bandwidth measurement session.")
+def plot_time_series(experiments: list[ExperimentInfo], filename: str):
+    pass
 
-    messages_per_node_configs = [1, 2, 4, 8]
-    all_summaries = []
+
+def main():
+    # TODO: accept cmd args
+    logger.info("Starting 'Number of Messages vs. Bandwidth' experiment session.")
+
+    messages_per_node_configs = [1, 2, 4, 8, 16]
+    all_experiments = []
 
     for msg_count in messages_per_node_configs:
-        # 1. Run one isolated experiment to get the raw data.
-        experiment = do_experiment(num_nodes=NUM_NODES, messages_per_node=msg_count)
+        logger.info(f"Running experiment for {msg_count} messages per node...")
 
-        if experiment is None or experiment.df.empty:
-            logger.warning(f"Skipping plot for {msg_count} msgs/node due to no data.")
+        scenario = lambda clients: publish_by_number(clients, msg_count)
+        raw_df = run_experiment_lifecycle(NUM_NODES, 1, scenario)
+
+        if raw_df.empty:
+            logger.warning(f"No data for {msg_count} msgs/node run.")
             continue
 
-        all_summaries.append(experiment)
+        total_messages = msg_count * NUM_NODES
+        all_experiments.append(ExperimentInfo(total_messages, raw_df))
 
-    # 2. time-series for all experiments
-    time_series_fs = "results/num_vs_bandwidth_timeseries.png"
-    plot_time_series(all_summaries, time_series_fs)
+    if all_experiments:
+        plot_time_series(all_experiments, "results/num_vs_bandwidth_time_series.png")
 
-    # 3. aggregated analysis comparing effect of different number of msgs
-    aggregated_fs = "results/num_vs_bandwidth.png"
-    analyze_and_plot_aggregate(all_summaries, aggregated_fs, NUM_NODES)
+        analyze_and_plot_aggregate(
+            all_experiments, "results/num_vs_bandwidth.png", NUM_NODES
+        )
 
-    logger.info("Bandwidth measurement session finished.")
+    logger.info("Experiment session finished.")
 
 
 if __name__ == "__main__":
-    logging.basicConfig(
-        format="%(asctime)s - %(levelname)s - %(message)s",
-    )
+    logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s")
     main()
