@@ -21,6 +21,12 @@ Used NWaku metrics for the experiment: libp2p_network_bytes_total
 
 Design Decisions:
 -----------------------
+Q: Why publishing all the messages concurrently?
+
+A: I think that describes more the relation between number of
+messages and bandwidth than publishing `n` messages sequentially.
+Besides being a more realistic production scenario.
+
 Q: Why run independent experiments and aggregate their results
    instead of running one long experiment with multiple message
    batches?
@@ -29,7 +35,7 @@ A: By setting up a fresh, clean network for each set of parameters
    (e.g., for 10 messages, then for 20, etc.), we ensure that each
    run is an independent, controlled experiment. This allows us to
    isolate the impact of our single variable (number of messages)
-   on bandwidth.
+   on bandwidth
 """
 
 from dataclasses import dataclass
@@ -50,7 +56,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 # Experiment config
-NUM_NODES = 5
+NUM_NODES = 20
 WAKU_IMAGE_NAME = "wakuorg/nwaku"
 PS_TOPIC = "/waku/2/default-waku/proto"
 CONTENT_TOPIC = "my-content-topic"
@@ -248,15 +254,75 @@ def plot_time_series(experiments: list[ExperimentInfo], filename: str):
     pass
 
 
-def analyze_and_plot_aggregate(experiments: list[ExperimentInfo], filename: str):
-    pass
+def analyze_and_plot_aggregate(
+    experiments: list[ExperimentInfo], filename: str, num_nodes: int
+):
+    """
+    Analyzes data from multiple experiment runs and plots the
+    aggregate relationship between the number of messages and
+    network bandwidth cost.
+
+    For each experiment, it calculates the "Total Net Bandwidth Cost"
+    by summing the byte increase across all nodes. It then plots
+    these costs against the total number of messages sent in each
+    experiment
+    """
+    logger.info(f"Analyzing and plotting aggregate results to {filename}...")
+    plot_data = []
+
+    for experiment in experiments:
+        df = experiment.df
+
+        # It gets the increase in bytes for each node (max - min)
+        # and sums them for a total network cost. This works because
+        # `libp2p_network_bytes_total` is a cumulative counter
+        agg_df = df.groupby("node")["total_bytes"].agg(["max", "min"])
+        net_bandwidth_cost = (agg_df["max"] - agg_df["min"]).sum()
+
+        plot_data.append(
+            {
+                "total_messages": experiment.num_messages,
+                "net_bandwidth_cost_mb": net_bandwidth_cost / (1024 * 1024),
+            }
+        )
+
+    if not plot_data:
+        logger.warning("No data to plot for aggregate analysis.")
+        return
+
+    summary_df = pd.DataFrame(plot_data)
+
+    # Create the plot
+    plt.figure(figsize=(12, 8))
+    sns.set_theme(style="whitegrid")
+
+    # Using regplot to show the linear relationship and confidence interval
+    plot = sns.regplot(
+        x="total_messages",
+        y="net_bandwidth_cost_mb",
+        data=summary_df,
+        ci=95,  # Show 95% confidence interval
+    )
+
+    plot.set_title(
+        f"Total Messages Sent vs. Net Bandwidth Cost ({num_nodes} nodes)",
+        fontsize=16,
+        fontweight="bold",
+    )
+    plot.set_xlabel("Total Number of Messages Sent (across all nodes)", fontsize=12)
+    plot.set_ylabel("Net Bandwidth Cost (MB)", fontsize=12)
+
+    # Save the plot
+    plt.savefig(filename)
+    plt.close()
+    logger.info(f"Aggregate plot saved to {filename}")
 
 
 def main():
     # TODO: accept cmd args for num of nodes
     logger.info("Starting bandwidth measurement session.")
 
-    messages_per_node_configs = [2]
+    messages_per_node_configs = [1, 2, 4, 8]
     all_summaries = []
 
     for msg_count in messages_per_node_configs:
@@ -270,12 +336,12 @@ def main():
         all_summaries.append(experiment)
 
     # 2. time-series for all experiments
-    time_series_fs = "num_vs_bandwidth_timeseries.png"
+    time_series_fs = "results/num_vs_bandwidth_timeseries.png"
     plot_time_series(all_summaries, time_series_fs)
 
     # 3. aggregated analysis comparing effect of different number of msgs
-    aggregated_fs = "num_vs_bandwidth.png"
-    analyze_and_plot_aggregate(all_summaries, aggregated_fs)
+    aggregated_fs = "results/num_vs_bandwidth.png"
+    analyze_and_plot_aggregate(all_summaries, aggregated_fs, NUM_NODES)
 
     logger.info("Bandwidth measurement session finished.")
 

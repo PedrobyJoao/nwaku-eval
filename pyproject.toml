@@ -6,9 +6,11 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "docker>=7.1.0",
+    "matplotlib>=3.10.3",
     "pandas>=2.3.1",
     "pytest>=8.4.1",
     "requests>=2.32.4",
+    "seaborn>=0.13.2",
 ]
 
 [build-system]
