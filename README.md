@@ -28,10 +28,9 @@ TODO
 
 ## TODOs
 
-- [ ] subscribe and publish msgs in parallel
-- [ ] Nodes deployment in parallel
 - [ ] Modularize experiments and add readmes for them
 - [ ] statically build mesh or add discovery
+- [ ] execute experiments concurrently when aggregating
 - [ ] Tests
 - [ ] move `black` to `uv` pyproject def
 - [ ] is `uv` and its pyproject correctly being used? (package vs library...)

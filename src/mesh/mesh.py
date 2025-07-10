@@ -50,7 +50,6 @@ class Mesh:
 
     TODOs:
     - [ ] statically build mesh or add discovery
-    - [ ] deployment and teardown of nodes in parallel
     - [ ] handle forceful shutdown signals
     - [ ] allow building image too
     - [ ] allow arbitrary p2p apps
@@ -85,38 +84,71 @@ class Mesh:
 
     def start(self):
         """
-        Starts the mesh network:
-        1. creates a docker network
-        2. starts bootstrap nodes and retrieve their listening addresses
-        3. starts regular nodes
+        Starts the mesh network concurrently:
+        1. Pre-allocates all necessary ports.
+        2. Starts bootstrap nodes concurrently.
+        3. Fetches their multiaddresses concurrently.
+        4. Starts regular nodes concurrently.
+
+        TODO: node configs shouldn't be built with dicts but instead with a dataclass
         """
         logger.info("Starting mesh: pulling image and creating docker network")
         self._image = pull_docker_image(self._client, self._image_name)
         self._network = new_docker_net(self._client, DOCKER_NET_NAME)
 
-        logger.info(f"Starting {self._bootstrappers_num} bootstrap nodes...")
+        # 1. Pre-allocate all ports at once to avoid race conditions
+        logger.debug("Pre-allocating ports...")
+        num_ports_needed = self._num_nodes * 2
+        all_ports = get_free_ports(num_ports_needed)
+        port_iterator = iter(all_ports)
+
+        # 2. Prepare startup configs for all nodes
+        bootstrap_configs = []
         for i in range(self._bootstrappers_num):
-            # TODO: set all ports beforehand so that we can deploy nodes in parallel later
-            rest_port, metrics_port = get_free_ports(2)
-            node = self._start_node(f"bootstrap-node-{i}", rest_port, metrics_port)
-            self._bootstrap_nodes.append(node)
+            bootstrap_configs.append(
+                {
+                    "name": f"bootstrap-node-{i}",
+                    "rest_port": next(port_iterator),
+                    "metrics_port": next(port_iterator),
+                }
+            )
 
-        logger.info("Getting multiaddresses of bootstrap nodes")
-        bootstrap_multiaddrs = [
-            self._get_multiaddr(node) for node in self._bootstrap_nodes
-        ]
+        regular_node_configs = []
+        for i in range(self._num_nodes - self._bootstrappers_num):
+            regular_node_configs.append(
+                {
+                    "name": f"node-{i}",
+                    "rest_port": next(port_iterator),
+                    "metrics_port": next(port_iterator),
+                }
+            )
 
+        # 3. Start bootstrap nodes
+        logger.info(f"Starting {self._bootstrappers_num} bootstrap nodes...")
+        with ThreadPoolExecutor() as executor:
+            self._bootstrap_nodes = list(
+                executor.map(lambda cfg: self._start_node(**cfg), bootstrap_configs)
+            )
+
+        # 4. Get multiaddresses
+        logger.info("Getting multiaddresses of bootstrap nodes...")
+        with ThreadPoolExecutor() as executor:
+            bootstrap_multiaddrs = list(
+                executor.map(self._get_multiaddr, self._bootstrap_nodes)
+            )
+
+        # 5. Start non-bootstrap nodes
         num_regular_nodes = self._num_nodes - self._bootstrappers_num
         logger.info(f"Starting {num_regular_nodes} regular nodes...")
-        for i in range(num_regular_nodes):
-            rest_port, metrics_port = get_free_ports(2)
-            node = self._start_node(
-                f"node-{i}",
-                rest_port,
-                metrics_port,
-                bootstrap_multiaddresses=bootstrap_multiaddrs,
+        with ThreadPoolExecutor() as executor:
+            self._nodes = list(
+                executor.map(
+                    lambda cfg: self._start_node(
+                        **cfg, bootstrap_multiaddresses=bootstrap_multiaddrs
+                    ),
+                    regular_node_configs,
+                )
             )
-            self._nodes.append(node)
 
         logger.info("Mesh started successfully.")
 
