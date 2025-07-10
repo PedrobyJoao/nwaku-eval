@@ -40,6 +40,7 @@ from typing import Any, Dict, List
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from concurrent.futures import ThreadPoolExecutor
 
 from mesh.mesh import Mesh
 from nwaku import client
@@ -66,7 +67,9 @@ POST_PUBLISH_WAIT_S = 20
 
 # Time to wait for the pubsub mesh to form after all nodes have
 # subscribed.
-SUBSCRIPTIONS_WAIT_S = 10
+WAIT_AFTER_SUBSCRIPTIONS_S = 10
+
+WAIT_CAN_SUBSCRIBE_S = 10
 
 
 def do_experiment(num_nodes: int, messages_per_node: int) -> pd.DataFrame:
@@ -98,13 +101,20 @@ def do_experiment(num_nodes: int, messages_per_node: int) -> pd.DataFrame:
                     metrics_port=node.metrics_port,
                 )
 
+            logger.info("Waiting for REST API to be ready for subscriptions...")
+            time.sleep(WAIT_CAN_SUBSCRIBE_S) 
             logger.info("Subscribing all nodes to the pubsub topic...")
-            for waku_client in waku_clients.values():
-                # TODO: in parallel
-                waku_client.subscribe_to_pubsub_topic([PS_TOPIC])
+            with ThreadPoolExecutor() as executor:
+                # list to wait for evaluation of all threads
+                list(
+                    executor.map(
+                        lambda w_client: w_client.subscribe_to_pubsub_topic([PS_TOPIC]),
+                        waku_clients.values(),
+                    )
+                )
 
             logger.info("Waiting for gossipsub mesh to form...")
-            time.sleep(SUBSCRIPTIONS_WAIT_S)
+            time.sleep(WAIT_AFTER_SUBSCRIPTIONS_S)
 
             # Start background metrics polling
             stop_event = threading.Event()
@@ -233,6 +243,6 @@ def main():
 
 if __name__ == "__main__":
     logging.basicConfig(
-            format="%(asctime)s - %(levelname)s - %(message)s",
-            )
+        format="%(asctime)s - %(levelname)s - %(message)s",
+    )
     main()

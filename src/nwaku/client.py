@@ -27,6 +27,7 @@ def with_retry(attempts: int = 10, delay: float = 1.0):
                     requests.exceptions.RequestException,
                     WakuRestClientException,
                 ) as e:
+                    logger.debug(f"Attempt {i + 1} failed: {e}")
                     last_exception = e
                     if i < attempts - 1:
                         time.sleep(delay)
