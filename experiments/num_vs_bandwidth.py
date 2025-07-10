@@ -102,7 +102,7 @@ def do_experiment(num_nodes: int, messages_per_node: int) -> pd.DataFrame:
                 )
 
             logger.info("Waiting for REST API to be ready for subscriptions...")
-            time.sleep(WAIT_CAN_SUBSCRIBE_S) 
+            time.sleep(WAIT_CAN_SUBSCRIBE_S)
             logger.info("Subscribing all nodes to the pubsub topic...")
             with ThreadPoolExecutor() as executor:
                 # list to wait for evaluation of all threads
@@ -119,7 +119,8 @@ def do_experiment(num_nodes: int, messages_per_node: int) -> pd.DataFrame:
             # Start background metrics polling
             stop_event = threading.Event()
             polling_thread = threading.Thread(
-                target=_poll_metrics, args=(stop_event, waku_clients, records)
+                target=poll_libp2p_bytes_metrics,
+                args=(stop_event, waku_clients, records),
             )
             polling_thread.start()
 
@@ -131,7 +132,6 @@ def do_experiment(num_nodes: int, messages_per_node: int) -> pd.DataFrame:
             logger.info(
                 f"Publishing {messages_per_node} messages from each of the {num_nodes} nodes..."
             )
-
 
             # PUBLISH.1: Prepare all publishing tasks in advance.
             publish_tasks = []
@@ -146,15 +146,19 @@ def do_experiment(num_nodes: int, messages_per_node: int) -> pd.DataFrame:
             # PUBLISH.2. Use a thread pool to publish all messages concurrently.
             with ThreadPoolExecutor() as executor:
                 # list() ensures we wait for all messages to be sent.
-                list(executor.map(
-                    lambda task: task[0].publish_message(PS_TOPIC, task[1]),
-                    publish_tasks
-                ))
+                list(
+                    executor.map(
+                        lambda task: task[0].publish_message(PS_TOPIC, task[1]),
+                        publish_tasks,
+                    )
+                )
 
             logger.info("All messages published.")
 
             # Collect data post-publishing
-            logger.info(f"Waiting {POST_PUBLISH_WAIT_S}s for all messages to propagate...")
+            logger.info(
+                f"Waiting {POST_PUBLISH_WAIT_S}s for all messages to propagate..."
+            )
             time.sleep(POST_PUBLISH_WAIT_S)
 
         except Exception as e:
@@ -181,32 +185,52 @@ def do_experiment(num_nodes: int, messages_per_node: int) -> pd.DataFrame:
     return pd.DataFrame(records)
 
 
-def _poll_metrics(
+def poll_libp2p_bytes_metrics(
     stop_event: threading.Event,
     waku_clients: Dict[str, client.WakuRestClient],
     records: List[Dict[str, Any]],
 ):
-    # TODO: get metrics in parallel for a more accurate representation
-    # of the network at a given time
-    while not stop_event.is_set():
-        for node_id, waku_client in waku_clients.items():
-            try:
-                metrics_raw = waku_client.get_metrics()
-                scraped_metrics = client.scrape_metrics(
-                    metrics_raw, "libp2p_network_bytes_total"
-                )
-                for metric in scraped_metrics:
-                    records.append(
-                        {
-                            "timestamp": time.time(),
-                            "node": node_id,
-                            "direction": metric["labels"]["direction"],
-                            "total_bytes": metric["value"],
-                        }
-                    )
-            except Exception as e:
-                logger.error(f"Error polling metrics for {node_id}: {e}")
+    """
+    Polls Waku node metrics concurrently and appends them to a shared list.
 
+    This function runs in a background thread. In a loop, it uses a
+    ThreadPoolExecutor to fetch metrics from all nodes at the same time.
+    This provides a more accurate snapshot of the network's state at
+    each polling interval.
+    """
+
+    def _poll_single_node(node_info: tuple[str, client.WakuRestClient]) -> list:
+        node_id, waku_client = node_info
+        node_records = []
+        try:
+            metrics_raw = waku_client.get_metrics()
+            scraped_metrics = client.scrape_metrics(
+                metrics_raw, "libp2p_network_bytes_total"
+            )
+            for metric in scraped_metrics:
+                node_records.append(
+                    {
+                        "timestamp": time.time(),
+                        "node": node_id,
+                        "direction": metric["labels"]["direction"],
+                        "total_bytes": metric["value"],
+                    }
+                )
+        except Exception as e:
+            logger.error(f"Error polling metrics for {node_id}: {e}")
+        return node_records
+
+    while not stop_event.is_set():
+        with ThreadPoolExecutor() as executor:
+            # Map the polling function over all clients
+            results_iterator = executor.map(_poll_single_node, waku_clients.items())
+
+            # Collect results and extend the main records list
+            for node_records_list in results_iterator:
+                if node_records_list:
+                    records.extend(node_records_list)
+
+        # Wait for the next polling interval, or break if stopped
         if stop_event.wait(POLL_INTERVAL_S):
             break
 
