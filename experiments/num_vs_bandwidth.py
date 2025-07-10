@@ -63,7 +63,7 @@ BASELINE_WAIT_S = 15
 
 # Time to wait after publishing for messages to propagate and be
 # reflected in metrics.
-POST_PUBLISH_WAIT_S = 20
+POST_PUBLISH_WAIT_S = 10
 
 # Time to wait for the pubsub mesh to form after all nodes have
 # subscribed.
@@ -131,18 +131,30 @@ def do_experiment(num_nodes: int, messages_per_node: int) -> pd.DataFrame:
             logger.info(
                 f"Publishing {messages_per_node} messages from each of the {num_nodes} nodes..."
             )
+
+
+            # PUBLISH.1: Prepare all publishing tasks in advance.
+            publish_tasks = []
             for node_id, waku_client in waku_clients.items():
-                # TODO: use threads to make the publishing concurrent?
                 for i in range(messages_per_node):
                     msg = client.create_waku_message(
                         payload=f"msg-{i}-{node_id}",
                         content_topic=CONTENT_TOPIC,
                     )
-                    waku_client.publish_message(PS_TOPIC, msg)
+                    publish_tasks.append((waku_client, msg))
+
+            # PUBLISH.2. Use a thread pool to publish all messages concurrently.
+            with ThreadPoolExecutor() as executor:
+                # list() ensures we wait for all messages to be sent.
+                list(executor.map(
+                    lambda task: task[0].publish_message(PS_TOPIC, task[1]),
+                    publish_tasks
+                ))
+
             logger.info("All messages published.")
 
             # Collect data post-publishing
-            logger.info(f"Waiting {POST_PUBLISH_WAIT_S}s for messages to propagate...")
+            logger.info(f"Waiting {POST_PUBLISH_WAIT_S}s for all messages to propagate...")
             time.sleep(POST_PUBLISH_WAIT_S)
 
         except Exception as e:
