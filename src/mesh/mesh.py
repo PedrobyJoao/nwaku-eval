@@ -4,6 +4,7 @@ import requests
 import time
 
 from .utils import get_free_ports, new_docker_net, pull_docker_image
+from nwaku.client import WakuRestClient
 
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -224,29 +225,21 @@ class Mesh:
 
         return NodeContainer(name, container, rest_port, metrics_port)
 
-    def _get_multiaddr(
-        self, node: NodeContainer, retries: int = 10, delay: float = 1.0
-    ) -> str:
-        """
-        Retrieves the multiaddress of a node by querying its REST API with retries.
-        This handles the race condition where the API is not yet ready.
+    def _get_multiaddr(self, node: NodeContainer) -> str:
+        with WakuRestClient(
+            ip_address="localhost",
+            rest_port=node.rest_port,
+            metrics_port=node.metrics_port,
+        ) as client:
+            info = client.get_info()
+            listen_addrs = info.get("listenAddresses", [])
+            if not listen_addrs:
+                raise Exception(f"Node {node.id} reported no listen addresses")
 
-        TODO: use waku client under src/nwaku/client.py
-        TODO: is getting the first elem from the listenAddresses reliable enough?
-        """
-        api_url = f"http://localhost:{node.rest_port}/info"
-        for i in range(retries):
-            try:
-                response = requests.get(api_url, timeout=1)
-                response.raise_for_status()
-                info = response.json()
-                multiaddr = info["listenAddresses"][0]
-                logger.debug(f"Got multiaddr for {node.container.name}: {multiaddr}")
-                return multiaddr
-            except (ConnectionError, HTTPError, requests.exceptions.ReadTimeout) as e:
-                logger.debug(
-                    f"Attempt {i+1}/{retries}: Could not get multiaddr for {node.container.name}, retrying... Error: {e}"
-                )
-                time.sleep(delay)
+            # find first not loopback since we're using docker network
+            for addr in listen_addrs:
+                if "/127.0.0.1/" not in addr:
+                    logger.debug(f"Selected multiaddr for {node.id}: {addr}")
+                    return addr
 
-        raise Exception(f"Could not get multiaddr for {node.container.name}")
+            raise Exception(f"Could not find a non-loopback multiaddr for {node.id}")
