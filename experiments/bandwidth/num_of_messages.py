@@ -150,6 +150,7 @@ def analyze_and_plot_aggregate(
 
 
 def plot_time_series(experiments: list[ExperimentInfo], filename: str):
+    # TODO
     pass
 
 
@@ -164,6 +165,7 @@ def main():
         logger.info(f"Running experiment for {msg_count} messages per node...")
 
         scenario = lambda clients: publish_by_number(clients, msg_count)
+        # TODO: bootstrap nodes proporitonal to num of nodes
         raw_df = run_experiment_lifecycle(NUM_NODES, 1, scenario)
 
         if raw_df.empty:
