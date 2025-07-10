@@ -90,12 +90,12 @@ def do_experiment(num_nodes: int, messages_per_node: int) -> pd.DataFrame:
     with Mesh(
         num_nodes=num_nodes, bootstrappers_num=1, image_name=WAKU_IMAGE_NAME
     ) as mesh:
-        waku_clients: Dict[str, client.WakuRestClient] = {}
+        waku_clients: Dict[str, client.WakuClient] = {}
         polling_thread: threading.Thread | None = None
         stop_event: threading.Event | None = None
         try:
             for node in mesh.all_nodes:
-                waku_clients[node.id] = client.WakuRestClient(
+                waku_clients[node.id] = client.WakuClient(
                     ip_address="localhost",
                     rest_port=node.rest_port,
                     metrics_port=node.metrics_port,
@@ -187,7 +187,7 @@ def do_experiment(num_nodes: int, messages_per_node: int) -> pd.DataFrame:
 
 def poll_libp2p_bytes_metrics(
     stop_event: threading.Event,
-    waku_clients: Dict[str, client.WakuRestClient],
+    waku_clients: Dict[str, client.WakuClient],
     records: List[Dict[str, Any]],
 ):
     """
@@ -199,7 +199,7 @@ def poll_libp2p_bytes_metrics(
     each polling interval.
     """
 
-    def _poll_single_node(node_info: tuple[str, client.WakuRestClient]) -> list:
+    def _poll_single_node(node_info: tuple[str, client.WakuClient]) -> list:
         node_id, waku_client = node_info
         node_records = []
         try:
@@ -265,6 +265,7 @@ def main():
         plot_time_series(raw_data_df, f"testdata/timeseries_{run_name}.png")
 
         all_summaries.append(
+            # TODO: use dataclass instead
             {
                 "msg_count": total_msg_count,
                 "raw_data": raw_data_df,

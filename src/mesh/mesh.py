@@ -4,7 +4,7 @@ import requests
 import time
 
 from .utils import get_free_ports, new_docker_net, pull_docker_image
-from nwaku.client import WakuRestClient
+from nwaku.client import WakuClient
 
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -226,7 +226,7 @@ class Mesh:
         return NodeContainer(name, container, rest_port, metrics_port)
 
     def _get_multiaddr(self, node: NodeContainer) -> str:
-        with WakuRestClient(
+        with WakuClient(
             ip_address="localhost",
             rest_port=node.rest_port,
             metrics_port=node.metrics_port,

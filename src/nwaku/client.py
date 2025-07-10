@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-class WakuRestClientException(Exception):
+class WakuClientException(Exception):
     pass
 
 
@@ -25,13 +25,13 @@ def with_retry(attempts: int = 10, delay: float = 1.0):
                     return func(self, *args, **kwargs)
                 except (
                     requests.exceptions.RequestException,
-                    WakuRestClientException,
+                    WakuClientException,
                 ) as e:
                     logger.debug(f"Attempt {i + 1} failed: {e}")
                     last_exception = e
                     if i < attempts - 1:
                         time.sleep(delay)
-            raise WakuRestClientException(
+            raise WakuClientException(
                 f"Request {func.__name__} failed after {attempts} attempts: {last_exception}"
             ) from last_exception
 
@@ -40,7 +40,7 @@ def with_retry(attempts: int = 10, delay: float = 1.0):
     return decorator
 
 
-class WakuRestClient:
+class WakuClient:
     """
     A HTTP client for a NWaku node's REST API and metrics API.
     """
@@ -57,7 +57,7 @@ class WakuRestClient:
         self.session = requests.Session()
         self.timeout = timeout
         logger.info(
-            f"WakuRestClient initialized for REST API at {self.base_url} "
+            f"WakuClient initialized for REST API at {self.base_url} "
             f"and metrics at {self.metrics_url}"
         )
 
@@ -78,7 +78,7 @@ class WakuRestClient:
             url = e.response.url
             logger.error(f"HTTP Error: {e.response.status_code} for {url}")
             logger.error(f"Response body: {e.response.text}")
-            raise WakuRestClientException(f"HTTP Error: {e}") from e
+            raise WakuClientException(f"HTTP Error: {e}") from e
 
     @with_retry()
     def get_info(self) -> dict[str, Any]:
