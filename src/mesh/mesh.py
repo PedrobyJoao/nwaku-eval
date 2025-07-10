@@ -157,7 +157,7 @@ class Mesh:
         logger.info("Stopping mesh...")
         with ThreadPoolExecutor() as executor:
             # TODO: handle exceptions here?
-            executor.map(lambda node: node.cleanup(), self.all_nodes)
+            list(executor.map(lambda node: node.cleanup(), self.all_nodes))
 
         if self._network:
             try:
