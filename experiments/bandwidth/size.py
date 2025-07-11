@@ -50,6 +50,9 @@ NUM_NODES = 20
 CONTENT_TOPIC = "size-vs-bw-content-topic"
 NUM_MESSAGES_PER_RUN = 20
 
+# How many times the same experiment should be run
+NUM_TRIALS = 3
+
 
 @dataclass
 class ExperimentInfo:
@@ -140,17 +143,26 @@ def main():
     # with small sizes and also the bandwidth relation with msg size as it grows
     # bigger
     # TODO: library to represent the numbers better
+    # Nwaku message limit: 153600 bytes
     payload_size_configs = [
-        128,  # 128 Bytes (check message passing overhead of one msg)
+        128,  # 128 Bytes (check message passing overhead)
         1 * 1024,  # 1 KB
         8 * 1024,  # 8 KB
         64 * 1024,  # 64 KB
-        512 * 1024,  # 512 KB
-        1024 * 1024,  # 1 MB (1024 KB)
+        128 * 1024,  # 128 KB
     ]
     all_experiments = []
 
     for size_bytes in payload_size_configs:
+        # IMPORTANT: maybe a more reliable way is to run several trials
+        # of the same experiment so that we could have more stable results,
+        # ignoring fluctuations on the y-axis inherited to external factors
+        # (e.g.: host machine running the experiment using more CPU, and for
+        # some reason nim-libp2p starts to decrease bandwidth usage and increase delay)
+        #
+        # To implement this, we just have to uncomment the following line:
+        # Note: the overall experiment would take longer obviously.
+        # for trial in range(NUM_TRIALS):
         logger.info(f"Running experiment for payload size: {size_bytes} bytes...")
         action = lambda clients: publish_by_size(
             clients, size_bytes, NUM_MESSAGES_PER_RUN

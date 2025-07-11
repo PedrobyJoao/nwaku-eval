@@ -162,6 +162,15 @@ def main():
     all_experiments = []
 
     for msg_count in messages_per_node_configs:
+        # IMPORTANT: maybe a more reliable way is to run several trials
+        # of the same experiment so that we could have more stable results,
+        # ignoring fluctuations on the y-axis inherited to external factors
+        # (e.g.: host machine running the experiment using more CPU, and for
+        # some reason nim-libp2p starts to decrease bandwidth usage and increase delay)
+        #
+        # To implement this, we just have to uncomment the following line:
+        # Note: the overall experiment would take longer obviously.
+        # for trial in range(NUM_TRIALS):
         logger.info(f"Running experiment for {msg_count} messages per node...")
 
         scenario = lambda clients: publish_by_number(clients, msg_count)
