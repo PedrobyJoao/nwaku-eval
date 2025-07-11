@@ -234,19 +234,19 @@ It would be nice to play with Gossipsub parameters and see how the experiments r
 
 ## Backlog/TODOs
 
-- [ ] readme for bandwidth experiments
-- [ ] main readme
-- [ ] grammar corrections of docs
-- [ ] run several trials for the same experiment for more reliable results
-- [ ] statically build mesh
-- [ ] store each result with a timestamp
-- [ ] num_vs_delay
-- [ ] bug: retry when hundreds of nodes
-- [ ] bug: use another port if busy within `mesh._start_node()`
-- [ ] set params through cmd args
-- [ ] bootstrap nodes proporitonal to num of nodes OR make it part of cmd args
-- [ ] unit/integration tests for `src/` code
-- [ ] bug: check if container name is already being used before starting it
+- [ ] docs: readme for bandwidth experiments
+- [ ] docs: main readme
+- [ ] docs: grammar corrections of docs
+- [ ] feat: run several trials for the same experiment for more reliable results
+- [ ] feat: statically build mesh
+- [ ] feat: store each result with a timestamp
+- [ ] feat: num_vs_delay
+- [ ] fix: retry when hundreds of nodes
+- [ ] fix: use another port if busy within `mesh._start_node()`
+- [ ] feat: set params through cmd args
+- [ ] feat: bootstrap nodes proporitonal to num of nodes OR make it part of cmd args
+- [ ] tests: unit/integration tests for `src/` code
+- [ ] fix: check if container name is already being used before starting it
   - or simply stop using container names
-- [ ] execute experiments concurrently when aggregating
-- [ ] move `black` to `uv` (remove from flake.nix)
+- [ ] feat: execute experiments concurrently when aggregating
+- [ ] refact: move `black` to `uv` (remove from flake.nix)
