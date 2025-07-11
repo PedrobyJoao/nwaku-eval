@@ -13,13 +13,65 @@ What is being evaluated:
 - [ ] How the **size** of messages affects delay.
 - [ ] How the **rate** of messages affects bandwidth and delay.
 
-## Dir structure
+## Project Structure
 
-TODO
+- `src/`: Core libraries for experiment infrastructure
+
+  - `mesh/`: Docker-based mesh network creation and management
+  - `nwaku/`: HTTP client for nwaku node REST and metrics APIs
+
+- `experiments/`: Executable analysis scripts that use the above libraries to:
+  - Create test networks
+  - Execute scenarios (publishing patterns, message configurations)
+  - Collect metrics and generate visualizations
 
 ## How to Run
 
-TODO with UV
+### Prerequisites
+
+- Docker
+- Python 3.12+
+- [uv](https://github.com/astral-sh/uv)
+
+### Setup and Execution
+
+1. **Clone the repository and cd to it:**
+
+   ```bash
+   git clone <repository-url>
+   cd <repository-name>
+   ```
+
+2. **Create a virtual environment and install dependencies:**
+
+   ```bash
+   uv venv
+   uv sync
+   ```
+
+3. **Run an experiment:**
+
+   ```bash
+   # For the "Number of Messages vs. Bandwidth" experiment:
+   uv run experiments/bandwidth/num_of_messages.py
+
+   # For the "Message Size vs. Bandwidth" experiment:
+   uv run experiments/bandwidth/size.py
+   ```
+
+Results will be saved as plots in the `results/` directory.
+
+> Important: I didn't implement the support for cmd args.
+> So for now, if needed, you have to change the experiment params
+> in the experiment scripts themselves.
+
+### With Nix
+
+```bash
+nix develop
+# The shell will automatically create the venv and sync dependencies
+# Then run experiments as shown above
+```
 
 ## Experiment setup
 
@@ -187,6 +239,7 @@ It would be nice to play with Gossipsub parameters and see how the experiments r
 - [ ] grammar corrections of docs
 - [ ] run several trials for the same experiment for more reliable results
 - [ ] statically build mesh
+- [ ] store each result with a timestamp
 - [ ] num_vs_delay
 - [ ] bug: retry when hundreds of nodes
 - [ ] bug: use another port if busy within `mesh._start_node()`
