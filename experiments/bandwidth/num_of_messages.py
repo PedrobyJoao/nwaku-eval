@@ -1,24 +1,6 @@
 """
 Number of messages <-> Bandwidth
 
-This script addresses the problem of understanding how bandwidth
-usage in a Waku network is affected by the number of messages
-being sent. It creates a decentralized, many-to-many traffic
-pattern where all nodes in the network publish messages
-concurrently.
-
-The analysis is presented through two primary visualizations:
-1.  A Time-Series Plot: For each individual experiment run, this
-    plot shows the bandwidth consumption over time. It
-    provides a clear visual of the network's behavior.
-2.  An Aggregate Comparison Plot: This final plot collates the
-    results from all runs. It plots the Total Net Bandwidth
-    Cost against the Total Number of Messages Sent. This key
-    visualization directly illustrates the relationship between
-    message load and the overall network cost.
-
-Used NWaku metrics for the experiment: libp2p_network_bytes_total
-
 Design Decisions:
 -----------------------
 Q: Why publishing all the messages concurrently?

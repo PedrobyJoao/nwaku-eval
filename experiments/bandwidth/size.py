@@ -1,17 +1,6 @@
 """
 Message Size <-> Bandwidth
 
-This script investigates the relationship between the size of a
-message's payload and the resulting network-wide bandwidth
-consumption. It uses a single-publisher model to create a
-clean, measurable signal.
-
-The analysis is presented through an aggregate comparison plot which
-collates the results from all runs. It plots "Net Bandwidth Cost"
-against "Message Payload Size" to visualize the trend. The
-y-intercept of this plot represents the fixed overhead cost of the
-Waku message protocol.
-
 Design Decisions:
 -----------------------
 Q: Why use a single publisher instead of many?
