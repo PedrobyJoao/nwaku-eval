@@ -83,7 +83,8 @@ def publish_by_number(
             msg = client.create_waku_message(
                 # 0 byte payload so that we can measure bandwidth based
                 # only on the number of messages
-                payload="", content_topic=CONTENT_TOPIC 
+                payload="",
+                content_topic=CONTENT_TOPIC,
             )
             publish_tasks.append((waku_client, msg))
 
@@ -144,7 +145,7 @@ def analyze_and_plot_aggregate(
     plot.set_title(
         f"Total Messages Sent vs. Net Bandwidth Cost ({num_nodes} nodes)", fontsize=16
     )
-    plot.set_xlabel("Total Number of Messages Sent (across all nodes)", fontsize=12)
+    plot.set_xlabel("Total Number of Messages Sent", fontsize=12)
     plot.set_ylabel("Net Bandwidth Cost (MB)", fontsize=12)
     plt.savefig(filename)
     plt.close()
