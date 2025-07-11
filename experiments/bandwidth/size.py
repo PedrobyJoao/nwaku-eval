@@ -102,7 +102,7 @@ def analyze_and_plot_aggregate(
     plot_data = []
     for experiment in experiments:
         df = experiment.df
-        agg_df = df.groupby("node")["total_bytes"].agg(["max", "min"])
+        agg_df = df.groupby(["node", "direction"])["total_bytes"].agg(["max", "min"])
         net_bandwidth_cost = (agg_df["max"] - agg_df["min"]).sum()
         plot_data.append(
             {

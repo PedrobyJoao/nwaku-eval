@@ -119,7 +119,7 @@ def analyze_and_plot_aggregate(
         # It gets the increase in bytes for each node (max - min)
         # and sums them for a total network cost. This works because
         # `libp2p_network_bytes_total` is a cumulative counter
-        agg_df = df.groupby("node")["total_bytes"].agg(["max", "min"])
+        agg_df = df.groupby(["node", "direction"])["total_bytes"].agg(["max", "min"])
         net_bandwidth_cost = (agg_df["max"] - agg_df["min"]).sum()
         plot_data.append(
             {
@@ -177,7 +177,7 @@ def main():
 
         scenario = lambda clients: publish_by_number(clients, msg_count)
         # TODO: bootstrap nodes proporitonal to num of nodes
-        raw_df = run_experiment_lifecycle(NUM_NODES, 1, scenario)
+        raw_df = run_experiment_lifecycle(NUM_NODES, 2, scenario)
 
         if raw_df.empty:
             logger.warning(f"No data for {msg_count} msgs/node run.")
