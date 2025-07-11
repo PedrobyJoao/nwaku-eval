@@ -163,10 +163,6 @@ This visualization allows us to clearly see the trend and determine how changes 
 To understand more, read the experiments READMEs.
 TODO: will we keep experiment READMEs?
 
-## Statistical rigor
-
-TODO: see if we can implement it
-
 ## Bandwidth experiments:
 
 TODO: link to its README
@@ -212,6 +208,29 @@ receiving messages would be an indication that the high number of messages is ca
 
 ## Future work
 
+### Reliability of experiment run units
+
+Each experiment unit ran just once.
+
+So if we're testing how the number of messages affects bandwidth, we're running each one
+of the following inputs only once: `[1, 2, 8, 16...]` (each element is the number of total
+messages published).
+
+It would be more reliable, if we ran each experiment unit multiple times so that we could
+average out the results and eliminate fluctuations between experiments.
+
+The code change here is simple: we just have to add one additional loop when running experiment
+units as `for t in range(NUM_TRIALS):`.
+
+Though, the experiments would get longer and more bug-prone.
+
+> There are some bugs that I didn't fix so the longer the experiment, more likely it will fail.
+>
+> The main one is port binding for the APIs which sometimes it's already in use since we're deploying
+> nodes in parallel.
+>
+> Solution is superficially described on the [backlog](#backlog) section of this README.
+
 ### Delay & Rate Analysis
 
 Investigate how delay is affected by: number, payload size and rate of messages.
@@ -241,21 +260,21 @@ We used the latest unmodified image of nwaku to run the experiments.
 
 It would be nice to play with Gossipsub parameters and see how the experiments results change.
 
-## Backlog/TODOs
+## Backlog
 
 - [ ] docs: readme for bandwidth experiments
 - [ ] docs: main readme
 - [ ] docs: grammar corrections of docs
-- [ ] feat: run several trials for the same experiment for more reliable results
+- [ ] tests: unit/integration tests for `src/` code
 - [ ] feat: statically build mesh
+- [ ] fix: reserve port or retry when port is already in use
+- [ ] feat: execute experiments in parallel when doing aggregation
+- [ ] feat: run several trials for the same experiment for more reliable results
 - [ ] feat: store each result with a timestamp
-- [ ] feat: num_vs_delay
 - [ ] fix: retry when hundreds of nodes
-- [ ] fix: use another port if busy within `mesh._start_node()`
+- [ ] feat: num_vs_delay
 - [ ] feat: set params through cmd args
 - [ ] feat: bootstrap nodes proporitonal to num of nodes OR make it part of cmd args
-- [ ] tests: unit/integration tests for `src/` code
 - [ ] fix: check if container name is already being used before starting it
   - or simply stop using container names
-- [ ] feat: execute experiments concurrently when aggregating
 - [ ] refact: move `black` to `uv` (remove from flake.nix)
