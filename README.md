@@ -132,9 +132,19 @@ Real decentralized networks have more sparse connections between different peers
 
 Therefore, keeping the experiments duration the shortest possible, the ideal solution is to statically
 create the network graph connnecting the peers through API calls.
-(TODO: describe how it's or would be done)
 
 Though, we would have to make sure no isolated networks (therefore more than one network) are created.
+
+> How would we do that?
+>
+> To statically build the network graph, we can employ a sliding window
+> algorithm-pattern. This method involves applying a fixed-size window to a
+> sequence of nodes (e.g., 5 nodes at a time). Within each window, all nodes
+> are connected to each other, forming a small, fully-meshed clique. The window
+> then slides forward by a set number of steps (e.g., 2 nodes), and the
+> connection process is repeated. By ensuring the step size is smaller than the
+> window size, we create overlapping peer groups, which guarantees a single,
+> fully connected network without any isolated partitions
 
 ## Aggregation of multiple experiments
 
@@ -161,8 +171,7 @@ TODO: see if we can implement it
 
 TODO: link to its README
 TODO: example image
-TODO: small tl;dr conclusion?
-TODO: or maybe we just bring the whole experiment to here
+TODO: small tl;dr conclusion? or maybe we just bring the whole experiment to here
 
 ## Limitations
 
