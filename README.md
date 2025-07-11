@@ -105,10 +105,10 @@ subscription to the pubsub topic.
 
 ### Wait times
 
-There are wait times on the following points:
+There are wait times at the following points:
 
 - After creation of the mesh: waiting for network to stabilize and nwaku's APIs to start.
-- After subscribing to the pubsub topic: waiting pubsub mesh formation and general
+- After subscribing to the pubsub topic: waiting for pubsub mesh formation and the general
   subscription state to be ready.
 - After starting polling metrics: so that we can define a **baseline cost of an idle network**.
 - After publishing messages: just to wait for the messages to arrive at the subscribers.
@@ -118,8 +118,8 @@ There are wait times on the following points:
 There is no discovery mechanism added because adding one would extend the duration of the experiments
 as they would have to wait longer after the mesh is created to give time for peers to discover each other.
 
-Currently, the experiments wait less than 20 seconds after the mesh is created so that whatever network
-processes can stabilize.
+Currently, the experiments wait less than 20 seconds after the mesh is created to allow network
+processes to stabilize.
 
 > With a discovery mechanism, experiments may have to wait `x` minutes.
 
@@ -131,7 +131,7 @@ are only connected to the bootstrap peers.
 Real decentralized networks have more sparse connections between different peers.
 
 Therefore, keeping the experiments duration the shortest possible, the ideal solution is to statically
-create the network graph connnecting the peers through API calls.
+create the network graph, connecting the peers through API calls.
 
 Though, we would have to make sure no isolated networks (therefore more than one network) are created.
 
@@ -144,7 +144,7 @@ Though, we would have to make sure no isolated networks (therefore more than one
 > then slides forward by a set number of steps (e.g., 2 nodes), and the
 > connection process is repeated. By ensuring the step size is smaller than the
 > window size, we create overlapping peer groups, which guarantees a single,
-> fully connected network without any isolated partitions
+> fully connected network without any isolated partitions.
 
 ## Aggregation of multiple experiments
 
@@ -165,12 +165,12 @@ To understand more, read the experiments READMEs.
 ## Bandwidth experiments:
 
 Both experiments follow the same methodology: **running
-multiple independent experiments** with varying parameters (e.g.:
+multiple independent experiments** with varying parameters (e.g.,
 number or size of messages) and **aggregating** the results to identify trends.
 
 ### Metrics
 
-For the bandwidth experiments,`libp2p_network_bytes_total` metric is used. It's exposed by the
+For the bandwidth experiments, the `libp2p_network_bytes_total` metric is used. It's exposed by the
 nwaku's metrics endpoint.
 
 This metric is a cumulative counter that captures all libp2p traffic (incoming and outgoing) of a given node.
@@ -181,7 +181,7 @@ This metric is a cumulative counter that captures all libp2p traffic (incoming a
 For both experiments, we calculate the net bandwidth cost throughout the experiment
 by subtracting the final bandwidth from the initial bandwidth.
 
-The reason is to eliminate the base network noise of idleness.
+This eliminates the base network noise of an idle network.
 
 ### Number of Messages vs. Bandwidth
 
@@ -275,8 +275,8 @@ Experiments were run on a local Docker network with all containers running withi
 Thus it does not take into account real-world network conditions of multi-host and multi-region nodes.
 
 Is it still useful though? I would say yes because we still can catch performance bottlenecks coming from
-network protocols processing, such as the number of control messages that peers exchange when publishing
-a message in a pubsub topic. Independently if all nodes are running within the same host or not, the
+network protocol processing, such as the number of control messages that peers exchange when publishing
+a message in a pubsub topic. Regardless of whether all nodes are running on the same host, the
 number of control messages will be the same and we still can identify this kind of bottlenecks with
 these local experiments.
 
@@ -284,16 +284,16 @@ Using a multi-host and multi-region experiment setup we could identify other kin
 such as:
 
 1. Latency-induced bottlenecks: inefficient peer scoring as a result of high latency, gossipsub mesh instability...
-2. Packet loss: the packet loss within a single-host environment is probably 0, and therefore protocols handling
-   packet loss can not be evaluated. A multi-host experiment would take that into account.
+2. Packet loss: the packet loss within a single-host environment is probably 0, and therefore protocols for handling
+   packet loss cannot be evaluated. A multi-host experiment would take that into account.
 
 ### Static network
 
-No nodes joined or left the network during tests, therefore no churn. That does not reproduce a real-world
+No nodes joined or left the network during tests; therefore, there was no churn. This does not reproduce a real-world
 decentralized network scenario.
 
-It's not that complex to add some dinamicity to the network. A simple way to do it is to have a specific list
-of peers that will be always entering and leaving the network in a dynamic frequency. Experiments won't take
+It is not that complex to add some dynamism to the network. A simple way to do it is to have a specific list
+of peers that continually enter and leave the network at a dynamic frequency. Experiments won't take
 these peers in account when measuring metrics (or maybe they will).
 
 ### Validating scenarios
@@ -301,14 +301,14 @@ these peers in account when measuring metrics (or maybe they will).
 An experiment setup may be validated before analyzing metrics.
 
 Example: if we're evaluating how bandwidth scales with the number of messages, before analyzing metrics,
-we may have to assert (or wait for) if all peers received all the messages in the first place. Peers not
+we may have to assert (or wait for) whether all peers received all the messages in the first place. Peers not
 receiving messages would be an indication that the high number of messages is causing a network overload.
 
 ## Future work
 
 ### Reliability of experiment run units
 
-Each experiment unit ran just once.
+Each experiment unit was run just once.
 
 So if we're testing how the number of messages affects bandwidth, we're running each one
 of the following inputs only once: `[1, 2, 8, 16...]` (each element is the number of total
@@ -322,7 +322,7 @@ units as `for t in range(NUM_TRIALS):`.
 
 Though, the experiments would get longer and more bug-prone.
 
-> There are some bugs that I didn't fix so the longer the experiment, more likely it will fail.
+> There are some unfixed bugs, so the longer an experiment runs, the more likely it is to fail.
 >
 > The main one is port binding for the APIs which sometimes it's already in use since we're deploying
 > nodes in parallel.
@@ -349,7 +349,7 @@ Then we get the received messages info for each peer with: `GET /relay/v1/messag
 
 Now it's just a matter of comparing the timestamps of published and received messages of same ID.
 
-> With regards to whether are we testing the number, payload or rate of messages.. it really
+> With regard to whether we are testing the number, payload or rate of messages.. it really
 > doesn't matter because what will be changed for each is just the business logic of publishing.
 
 ### Play with Gossipsub parameters
@@ -370,7 +370,7 @@ It would be nice to play with Gossipsub parameters and see how the experiments r
 - [ ] fix: retry when hundreds of nodes
 - [ ] feat: num_vs_delay
 - [ ] feat: set params through cmd args
-- [ ] feat: bootstrap nodes proporitonal to num of nodes OR make it part of cmd args
+- [ ] feat: bootstrap nodes proportional to num of nodes OR make it part of cmd args
 - [ ] fix: check if container name is already being used before starting it
   - or simply stop using container names
 - [ ] refact: move `black` to `uv` (remove from flake.nix)
