@@ -203,24 +203,16 @@ is `n * x`.
 
 ![Number of Messages vs. Bandwidth](results/num_vs_bandwidth.png)
 
-**Key findings:**
-
-- **Linear relationship**: Bandwidth consumption grows
-  predictably with message count
-- **Slope**: Represents the average network-wide cost per
-  message (including all protocol overhead)
-- **Y-intercept**: Near-zero value indicates minimal fixed
-  costs for the publishing scenario itself
-
-The linear scaling demonstrates that nwaku handles increased
-message volume efficiently without exponential overhead
-growth.
-
 ### Message Size vs. Bandwidth
 
 This experiment measures how payload size affects bandwidth
 consumption. A single publisher sends `x` messages with
 varying payload sizes.
+
+Messages are published `x` times to ensure the resulting traffic
+is reliably captured by our 1-second polling interval and that
+the measurement represents a stable average, minimizing the impact
+of random fluctuations
 
 **x = 20**
 **Number of nodes: 20**
@@ -238,23 +230,42 @@ payload_size_configs = [
     8 * 1024,  # 8 KB
     64 * 1024,  # 64 KB
     128 * 1024,  # 128 KB
+    # Nwaku message limit: 153.6 KB
 ]
 ```
 
 ![Message Size vs. Bandwidth](results/size_vs_bandwidth.png)
 
-**Key findings:**
+### Conclusions
 
-- **Linear relationship**: Bandwidth scales directly with
-  total payload size
-- **Y-intercept**: Reveals the fixed protocol overhead for
-  propagating 20 messages, regardless of content size
-- **Slope**: Quantifies the marginal bandwidth cost per
-  kilobyte of payload
+1.  **Linear Scaling**: Both experiments show a strong linear
+    relationship. This suggests that bandwidth usage in `nwaku`
+    scales predictably with message volume and size, without
+    unexpected exponential overhead.
 
-The significant y-intercept represents Waku's message
-envelope overhead (headers, routing metadata, etc.), while
-the slope shows the pure payload transmission cost.
+2.  **Low Message Overhead**: The near-zero y-intercept on both
+    plots indicates that the fixed protocol overhead for sending
+    a message is very low. This makes it efficient to send many
+    small messages, as the cost is dominated by payload size,
+    not message count.
+
+3.  **Payload Size is the Dominant Cost Driver**: Bandwidth
+    consumption is driven by payload size far more than by
+    message count. For total payloads under 20 KB, the network
+    cost is negligible. However, beyond this, the cost grows
+    substantially. For perspective: propagating a 2.5 MB total
+    payload (sent as 20 messages of 128KB each) consumed ~60 MB
+    of network traffic, while sending over 300 minimal-payload
+    messages consumed only ~2.8 MB.
+
+> Reminder:
+>
+> Total payload size is not the payload size of a single message
+> but the payload size of a single message multiplied by the number
+> of times the message is published which for this size-bandwidth
+> experiment, all messages were published 20 times.
+
+TODO: calculate slope for each experiment
 
 ## Limitations
 
@@ -350,7 +361,6 @@ It would be nice to play with Gossipsub parameters and see how the experiments r
 ## Backlog
 
 - [ ] feat: calculate slope number
-- [ ] docs: grammar corrections of docs
 - [ ] tests: unit/integration tests for `src/` code
 - [ ] feat: statically build mesh
 - [ ] fix: reserve port or retry when port is already in use
