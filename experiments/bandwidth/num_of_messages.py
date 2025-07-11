@@ -81,7 +81,9 @@ def publish_by_number(
     for node_id, waku_client in waku_clients.items():
         for i in range(messages_per_node):
             msg = client.create_waku_message(
-                payload=f"msg-{i}-{node_id}", content_topic=CONTENT_TOPIC
+                # 0 byte payload so that we can measure bandwidth based
+                # only on the number of messages
+                payload="", content_topic=CONTENT_TOPIC 
             )
             publish_tasks.append((waku_client, msg))
 
