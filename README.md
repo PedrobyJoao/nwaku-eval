@@ -266,6 +266,7 @@ payload_size_configs = [
 > experiment, all messages were published 20 times.
 
 TODO: calculate slope for each experiment
+TODO: calculate R-square for each experiment
 
 ## Limitations
 
@@ -361,6 +362,7 @@ It would be nice to play with Gossipsub parameters and see how the experiments r
 ## Backlog
 
 - [ ] feat: calculate slope number
+- [ ] feat: calculate R-square
 - [ ] tests: unit/integration tests for `src/` code
 - [ ] feat: statically build mesh
 - [ ] fix: reserve port or retry when port is already in use
