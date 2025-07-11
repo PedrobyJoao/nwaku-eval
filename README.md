@@ -279,25 +279,25 @@ TODO: calculate R-square for each experiment
 
 Our experiments are not as reliable as they could be because:
 
-1. Only a few nodes are used (e.g.: 20)
-2. A limited number of inputs were used for the variable being tested (e.g.,
-   using only 6 different payload sizes instead of 30)
-3. Each experiment configuration is only run once. We are not
-   running multiple trials for each configuration to average out random
-   noise and ensure statistical reliability.
+1.  Only a few nodes are used (e.g., 20).
+2.  A limited number of inputs were used for the independent variable being tested
+    (e.g., using only 6 different payload sizes instead of 30).
+3.  Each experiment configuration is only run once.
+    We are not running multiple trials for each configuration to average
+    out random noise and ensure statistical reliability.
 
-Couldn't we just change the parameters, increasing all the values?
+Couldn't we just increase these parameters for more reliable results?
 
-Well, yes... however, the experiments would get way longer and more bug-prone.
+Well, yes... but this is currently impractical for two main reasons:
 
-> There are some unfixed bugs, so the longer an experiment runs, the more likely it is to fail.
->
-> The main one is port binding for the APIs which sometimes it's already in use since we're deploying
-> nodes in parallel.
->
-> Solution is superficially described on the [backlog](#backlog) section of this README.
+1. **Experiment Duration:** Increasing the parameters would result in much
+   longer experiment runs. The long-term solution, tracked in the
+   backlog, is to run these trials in parallel.
 
-Also, to support greater parameters, it's preferable to run the experiments in parallel as much as possible.
+2. **Stability Issues:** Longer runs increase the chance of failure due to a known bug where
+   parallel node deployments can conflict over network ports.
+
+> This port binding issue is described with a potential solution in the [backlog](#backlog) section.
 
 ### Ideal network conditions
 
