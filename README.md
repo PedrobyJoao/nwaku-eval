@@ -1,3 +1,8 @@
+> **CAUTIOUS**: do not take the results here as a source of truth.
+> It's more a proof of concept than anything.
+
+See [limitations](#limitations) for more details.
+
 # Waku Performance Evaluation
 
 Context: Waku is a family of decentralized, censorship-resistant communication
@@ -270,6 +275,30 @@ TODO: calculate R-square for each experiment
 
 ## Limitations
 
+### Reliability of experiments
+
+Our experiments are not as reliable as they could be because:
+
+1. Only a few nodes are used (e.g.: 20)
+2. A limited number of inputs were used for the variable being tested (e.g.,
+   using only 6 different payload sizes instead of 30)
+3. Each experiment configuration is only run once. We are not
+   running multiple trials for each configuration to average out random
+   noise and ensure statistical reliability.
+
+Couldn't we just change the parameters, increasing all the values?
+
+Well, yes... however, the experiments would get way longer and more bug-prone.
+
+> There are some unfixed bugs, so the longer an experiment runs, the more likely it is to fail.
+>
+> The main one is port binding for the APIs which sometimes it's already in use since we're deploying
+> nodes in parallel.
+>
+> Solution is superficially described on the [backlog](#backlog) section of this README.
+
+Also, to support greater parameters, it's preferable to run the experiments in parallel as much as possible.
+
 ### Ideal network conditions
 
 Experiments were run on a local Docker network with all containers running within the same host.
@@ -306,29 +335,6 @@ we may have to assert (or wait for) whether all peers received all the messages 
 receiving messages would be an indication that the high number of messages is causing a network overload.
 
 ## Future work
-
-### Reliability of experiment run units
-
-Each experiment unit was run just once.
-
-So if we're testing how the number of messages affects bandwidth, we're running each one
-of the following inputs only once: `[1, 2, 8, 16...]` (each element is the number of total
-messages published).
-
-It would be more reliable, if we ran each experiment unit multiple times so that we could
-average out the results and eliminate fluctuations between experiments.
-
-The code change here is simple: we just have to add one additional loop when running experiment
-units as `for t in range(NUM_TRIALS):`.
-
-Though, the experiments would get longer and more bug-prone.
-
-> There are some unfixed bugs, so the longer an experiment runs, the more likely it is to fail.
->
-> The main one is port binding for the APIs which sometimes it's already in use since we're deploying
-> nodes in parallel.
->
-> Solution is superficially described on the [backlog](#backlog) section of this README.
 
 ### Delay & Rate Analysis
 
