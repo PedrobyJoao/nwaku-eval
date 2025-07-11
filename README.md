@@ -165,9 +165,78 @@ TODO: will we keep experiment READMEs?
 
 ## Bandwidth experiments:
 
-TODO: link to its README
-TODO: example image
-TODO: small tl;dr conclusion? or maybe we just bring the whole experiment to here
+Both experiments follow the same methodology: **running
+multiple independent experiments** with varying parameters (e.g.:
+number or size of messages) and **aggregating** the results to identify trends.
+
+### Metrics
+
+For the bandwidth experiments,`libp2p_network_bytes_total` metric is used. It's exposed by the
+nwaku's metrics endpoint.
+
+This metric is a cumulative counter that captures all libp2p traffic (incoming and outgoing) of a given node.
+
+> There is no reason to differentiate between incoming and outgoing traffic since we want to measure
+> the total bandwidth usage. Therefore, we just sum both values.
+
+For both experiments, we calculate the net bandwidth cost throughout the experiment
+by subtracting the final bandwidth from the initial bandwidth.
+
+The reason is to eliminate the base network noise of idleness.
+
+### Number of Messages vs. Bandwidth
+
+This experiment investigates how bandwidth scales with
+message volume. In each trial, all `n` nodes publish
+`x` messages concurrently.
+
+Thus the total number of messages published in a single run
+is `n * x`.
+
+> To isolate the effect of message count as the sole
+> variable, all messages use a minimal 1-byte payload. This
+> ensures that bandwidth variations are due to the number of
+> messages and their protocol overhead, not payload size
+> differences.
+
+![Number of Messages vs. Bandwidth](results/num_vs_bandwidth.png)
+
+**Key findings:**
+
+- **Linear relationship**: Bandwidth consumption grows
+  predictably with message count
+- **Slope**: Represents the average network-wide cost per
+  message (including all protocol overhead)
+  TODO: specify Slope number
+- **Y-intercept**: Near-zero value indicates minimal fixed
+  costs for the publishing scenario itself
+
+The linear scaling demonstrates that nwaku handles increased
+message volume efficiently without exponential overhead
+growth.
+
+### Message Size vs. Bandwidth
+
+This experiment measures how payload size affects bandwidth
+consumption. A single publisher sends `x` messages with
+varying payload sizes.
+
+For this experiment, `x` is set to 20.
+
+![Message Size vs. Bandwidth](results/size_vs_bandwidth.png)
+
+**Key findings:**
+
+- **Linear relationship**: Bandwidth scales directly with
+  total payload size
+- **Y-intercept**: Reveals the fixed protocol overhead for
+  propagating 20 messages, regardless of content size
+- **Slope**: Quantifies the marginal bandwidth cost per
+  kilobyte of payload
+
+The significant y-intercept represents Waku's message
+envelope overhead (headers, routing metadata, etc.), while
+the slope shows the pure payload transmission cost.
 
 ## Limitations
 
@@ -262,8 +331,6 @@ It would be nice to play with Gossipsub parameters and see how the experiments r
 
 ## Backlog
 
-- [ ] docs: readme for bandwidth experiments
-- [ ] docs: main readme
 - [ ] docs: grammar corrections of docs
 - [ ] tests: unit/integration tests for `src/` code
 - [ ] feat: statically build mesh
