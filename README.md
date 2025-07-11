@@ -204,6 +204,7 @@ is `n * x`.
 > differences.
 
 **Number of nodes: 20**
+
 **Number of messages for each experiment unit used**: `[1, 2, 4, 8, 16]`
 
 ![Number of Messages vs. Bandwidth](results/num_vs_bandwidth.png)
@@ -220,7 +221,9 @@ the measurement represents a stable average, minimizing the impact
 of random fluctuations
 
 **x = 20**
+
 **Number of nodes: 20**
+
 **Message sizes for each experiment unit used**:
 
 ```py
