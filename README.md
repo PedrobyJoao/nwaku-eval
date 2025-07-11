@@ -161,7 +161,6 @@ dependent variable on the y-axis (e.g., Net Bandwidth Cost).
 This visualization allows us to clearly see the trend and determine how changes in the input variable affect network performance.
 
 To understand more, read the experiments READMEs.
-TODO: will we keep experiment READMEs?
 
 ## Bandwidth experiments:
 
@@ -199,6 +198,9 @@ is `n * x`.
 > messages and their protocol overhead, not payload size
 > differences.
 
+**Number of nodes: 20**
+**Number of messages for each experiment unit used**: `[1, 2, 4, 8, 16]`
+
 ![Number of Messages vs. Bandwidth](results/num_vs_bandwidth.png)
 
 **Key findings:**
@@ -207,7 +209,6 @@ is `n * x`.
   predictably with message count
 - **Slope**: Represents the average network-wide cost per
   message (including all protocol overhead)
-  TODO: specify Slope number
 - **Y-intercept**: Near-zero value indicates minimal fixed
   costs for the publishing scenario itself
 
@@ -221,7 +222,24 @@ This experiment measures how payload size affects bandwidth
 consumption. A single publisher sends `x` messages with
 varying payload sizes.
 
-For this experiment, `x` is set to 20.
+**x = 20**
+**Number of nodes: 20**
+**Message sizes for each experiment unit used**:
+
+```py
+# REMINDER: the publisher publishes the same message 20 times
+# So total payload size is 20 * payload_size
+payload_size_configs = [
+    1,  # 1 byte (check y-intercept)
+    16,  # 16 bytes
+    64,  # 64 bytes
+    128,  # 128 bytes
+    1 * 1024,  # 1 KB
+    8 * 1024,  # 8 KB
+    64 * 1024,  # 64 KB
+    128 * 1024,  # 128 KB
+]
+```
 
 ![Message Size vs. Bandwidth](results/size_vs_bandwidth.png)
 
@@ -331,6 +349,7 @@ It would be nice to play with Gossipsub parameters and see how the experiments r
 
 ## Backlog
 
+- [ ] feat: calculate slope number
 - [ ] docs: grammar corrections of docs
 - [ ] tests: unit/integration tests for `src/` code
 - [ ] feat: statically build mesh
