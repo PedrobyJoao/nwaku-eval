@@ -142,10 +142,15 @@ def main():
     # So that we can both identify what is the network overhead of payloads
     # with small sizes and also the bandwidth relation with msg size as it grows
     # bigger
-    # TODO: library to represent the numbers better
+    #
     # Nwaku message limit: 153600 bytes
+    #
+    # TODO: library to represent the numbers better
     payload_size_configs = [
-        128,  # 128 Bytes (check message passing overhead)
+        1,  # 1 byte (check y-intercept)
+        16,  # 16 bytes
+        64,  # 64 bytes
+        128,  # 128 bytes
         1 * 1024,  # 1 KB
         8 * 1024,  # 8 KB
         64 * 1024,  # 64 KB
@@ -168,7 +173,7 @@ def main():
             clients, size_bytes, NUM_MESSAGES_PER_RUN
         )
         # TODO: bootstrap nodes proporitonal to num of nodes
-        raw_df = run_experiment_lifecycle(NUM_NODES, 1, action)
+        raw_df = run_experiment_lifecycle(NUM_NODES, 2, action)
 
         if raw_df.empty:
             logger.warning(f"No data for {size_bytes} byte run.")
