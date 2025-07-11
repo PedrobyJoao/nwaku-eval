@@ -56,7 +56,7 @@ class WakuClient:
         self.metrics_url = f"http://{ip_address}:{metrics_port}/metrics"
         self.session = requests.Session()
         self.timeout = timeout
-        logger.info(
+        logger.debug(
             f"WakuClient initialized for REST API at {self.base_url} "
             f"and metrics at {self.metrics_url}"
         )
