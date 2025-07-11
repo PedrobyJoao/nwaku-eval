@@ -80,7 +80,7 @@ Real decentralized networks have more sparse connections between different peers
 
 Therefore, keeping the experiments duration the shortest possible, the ideal solution is to statically
 create the network graph connnecting the peers through API calls.
-(TODO: modify this part if we implement)
+(TODO: describe how it's or would be done)
 
 Though, we would have to make sure no isolated networks (therefore more than one network) are created.
 
@@ -155,9 +155,24 @@ receiving messages would be an indication that the high number of messages is ca
 
 Investigate how delay is affected by: number, payload size and rate of messages.
 
-TODO: maybe add how I'd measure delay here
-
 Also, how the rate of messages affects bandwidth.
+
+#### How would we measure delay?
+
+We need two values here: timestamp of when the message was published and the timestamp
+of when it was received by the node.
+
+When publishing messages:
+
+1. Add a `meta` label for the message ID
+2. Store both the timestamp and the message ID
+
+Then we get the received messages info for each peer with: `GET /relay/v1/messages/{pubsubTopic}`.
+
+Now it's just a matter of comparing the timestamps of published and received messages of same ID.
+
+> With regards to whether are we testing the number, payload or rate of messages.. it really
+> doesn't matter because what will be changed for each is just the business logic of publishing.
 
 ### Play with Gossipsub parameters
 
@@ -170,9 +185,9 @@ It would be nice to play with Gossipsub parameters and see how the experiments r
 - [ ] readme for bandwidth experiments
 - [ ] main readme
 - [ ] grammar corrections of docs
-- [ ] num_vs_delay
-- [ ] statically build mesh
 - [ ] run several trials for the same experiment for more reliable results
+- [ ] statically build mesh
+- [ ] num_vs_delay
 - [ ] bug: retry when hundreds of nodes
 - [ ] bug: use another port if busy within `mesh._start_node()`
 - [ ] set params through cmd args
