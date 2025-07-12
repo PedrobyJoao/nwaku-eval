@@ -264,10 +264,6 @@ payload_size_configs = [
     of network traffic, while sending over 300 minimal-payload
     messages consumed only ~2.8 MB.
 
-TODO: calculate slope for each experiment
-
-TODO: calculate R-square for each experiment
-
 ## Limitations
 
 ### Reliability of experiments
@@ -366,14 +362,14 @@ It would be nice to play with Gossipsub parameters and see how the experiments r
 - [ ] feat: calculate R-square
 - [ ] tests: unit/integration tests for `src/` code
 - [ ] feat: statically build mesh
-- [ ] fix: reserve port or retry when port is already in use
+- [ ] fix: resolve port binding issue by letting docker choose, and then inspecting the container to get the chosen port.
+  - [ ] fix: we also need to add retries anyway
 - [ ] feat: execute experiments in parallel when doing aggregation
 - [ ] feat: run several trials for the same experiment for more reliable results
 - [ ] feat: store each result with a timestamp
-- [ ] fix: retry when hundreds of nodes
-- [ ] feat: num_vs_delay
 - [ ] feat: set params through cmd args
 - [ ] feat: bootstrap nodes proportional to num of nodes OR make it part of cmd args
-- [ ] fix: check if container name is already being used before starting it
-  - or simply stop using container names
+- [ ] fix: check if container name is already being used before starting it (or simply stop using container names)
+- [ ] fix: sometimes containers are not cleaned up
 - [ ] refact: move `black` to `uv` (remove from flake.nix)
+- [ ] feat: other experiments (delay, rate...)
