@@ -165,8 +165,6 @@ This graph plots the independent variable on the x-axis (e.g., Total Number of M
 dependent variable on the y-axis (e.g., Net Bandwidth Cost).
 This visualization allows us to clearly see the trend and determine how changes in the input variable affect network performance.
 
-To understand more, read the experiments READMEs.
-
 ## Bandwidth experiments:
 
 Both experiments follow the same methodology: **running
@@ -266,14 +264,8 @@ payload_size_configs = [
     of network traffic, while sending over 300 minimal-payload
     messages consumed only ~2.8 MB.
 
-> Reminder:
->
-> Total payload size is not the payload size of a single message
-> but the payload size of a single message multiplied by the number
-> of times the message is published which for this size-bandwidth
-> experiment, all messages were published 20 times.
-
 TODO: calculate slope for each experiment
+
 TODO: calculate R-square for each experiment
 
 ## Limitations
